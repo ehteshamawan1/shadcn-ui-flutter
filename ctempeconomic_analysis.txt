@@ -1,0 +1,229 @@
+# Economic Integration Analysis - SKA-DAN Project
+
+## Executive Summary
+
+This document analyzes the SKA-DAN codebase for Economic ERP integration.
+The application is an offline-first task/case management system with invoicing capabilities.
+Data must flow from local databases to Economic for customer billing and project accounting.
+
+## 1. CURRENT DATA MODELS & STRUCTURE
+
+### 1.1 Core Models (Flutter & React)
+
+User:
+- id (UUID), name, pin (4-digit), role (tekniker/admin/bogholder), createdAt
+
+Sag (Project/Case):
+- id, sagsnr (case number), adresse (address)
+- byggeleder (project leader), byggelederEmail, byggelederTlf
+- bygherre (customer), cvrNr (CVR), kundensSagsref (customer reference)
+- status (aktiv/afsluttet/arkiveret), aktiv (bool)
+- sagType (udtørring/varme/begge), region (fyn/jylland/sjælland)
+- oprettetAf, oprettetDato, opdateretDato
+
+Affugter (Dehumidifier Equipment):
+- id, nr (unique number e.g. AF-0001), type (adsorption/kondens)
+- maerke (Master/Fral/Qube), model, serie
+- status (hjemme/udlejet/defekt), currentSagId
+
+Equipment Log:
+- id, sagId, blokId, category (Affugter/Kaloriferer/Ventilator/Slange/Fyr/Tank/etc)
+- action (opsæt/nedtag/tilføj/defekt/afmeld)
+- data (dynamic: quantity, dailyRate, meters, pricePerMeter, kw, size, etc)
+- timestamp, user, note
+
+Timer Log:
+- id, sagId, date, type (Opsætning/Nedtagning/Tilsyn/Målinger/Skimmel/Boring/Andet)
+- customType, hours (decimal), rate (hourly DKK), billable (bool)
+- note, user, timestamp
+
+Blok (Block/Unit):
+- id, sagId, navn, pricingModel (dagsleje/fast_pris_per_lejlighed/fast_pris_per_m2)
+- antalLejligheder, antalM2, fastPrisPrLejlighed, fastPrisPrM2
+- færdigmeldte (tracking completed units)
+
+Kostpris (Cost Price):
+- id, category, type, kostpris (cost), salgspris (sale price)
+- enhed (pr.dag/pr.meter/pr.stk/pr.time), beskrivelse
+
+Fakturering (Invoice Record):
+- id, sagId, måned, år, fakturanr, beløb (amount), fakturadato
+
+### 1.2 Database Storage
+Flutter: Hive NoSQL (type-safe with code generation)
+React: IndexedDB (v12 schema) + localStorage
+
+Both store: users, sager, affugtere, equipment_logs, timer_logs, blokke, 
+blok_completions, kabel_slange_logs, equipment_registry, pricing_configs, 
+kostpriser, fakturering
+
+## 2. DATA CURRENTLY TRACKED (FOR INVOICING)
+
+Equipment Rentals:
+- NFC Equipment: setup/takedown dates, daily rates, individual pricing
+- Manual Categories: Kaloriferer, Ventilator, Affugter, Fyr, Tank, Generator, etc
+- Pricing: daily rate or custom price per unit
+
+Labor/Time:
+- Types: Opsætning, Nedtagning, Tilsyn, Målinger, Skimmel, Boring, Andet
+- Tracked: hours (decimal), rate/hour, billable flag, date, user, notes
+
+Block-Based Pricing:
+- Models: dagsleje, fast_pris_per_lejlighed, fast_pris_per_m2
+- Tracks completed units with dates
+
+Consumables:
+- Slanger (hoses): priced per meter
+- Kabler (cables): fixed price
+
+Invoice Generation:
+Current structure = Case Info + Equipment Billing + Labor Billing + Block Completion + Summary
+
+## 3. WHAT NEEDS TO SYNC TO ECONOMIC
+
+Priority 1 (Core):
+Customers: Sag.bygherre → CVR, address, contact info
+Projects: Sag (sagsnr, beskrivelse, dates, status)
+Invoice Lines: Equipment logs + Timer logs with calculated amounts
+
+Priority 2 (Supporting):
+Cost Centers: Sag records as projects
+Employees: Users to staff master
+Pricing Master: kostpriser for price lists
+Activity History: logs for project tracking
+
+Not Currently Tracked (needed for Economic):
+- Vendor information
+- Account codes for GL posting
+- Department codes
+- Cost allocation codes
+- Tax exemptions
+- Payment terms
+- Credit limits
+
+## 4. KEY DATA TRANSFORMATIONS NEEDED
+
+Date Standardization: ISO 8601 (already compliant)
+Currency: DKK (Danish Krone)
+VAT: 25% (hardcoded, Danish standard)
+User Mapping: Local IDs to Economic employee codes
+Equipment Duration: Calculate days_rented = takedownDate - setupDate + 1
+Block Pricing: sum(completionData × unit_price) by type
+Invoice Aggregation: Filter by date range, sum costs, add VAT
+
+Cost Calculation Examples:
+Equipment: days_rented × daily_rate
+Manual: customPrice from equipment data
+Labor: hours × hourly_rate
+Block: units_completed × price_per_unit
+Total: sum_of_costs + (sum_of_costs × 0.25)
+
+## 5. ARCHITECTURE RECOMMENDATIONS
+
+Recommended: Event-Based Sync (Queue + Cloud Functions)
+
+Flow:
+Apps (Flutter/React) → Hive/IndexedDB → Sync Queue (localStorage/Supabase)
+→ Backend Service (Validation & Transformation) → Economic API
+
+Backend Components Needed:
+1. Data Validation Service
+2. Economic Mapper (SKA-DAN → Economic format)
+3. Economic API Client (wrapper with auth, retry, error handling)
+4. Sync Queue Manager (handle pending, failures, duplicates)
+5. Webhook Handler (receive confirmations from Economic)
+
+Database Schema (Supabase):
+- sync_status (track which syncs succeeded/failed)
+- economic_mappings (customer/project ID lookups)
+- invoice_drafts (pre-sync invoice data)
+
+Required API Endpoints (Cloud Functions):
+- POST /sync-customer
+- POST /create-invoice
+- POST /sync-equipment-log
+- POST /sync-timer-log
+- GET /sync-status/:sagId
+- POST /webhook/economic-callback
+
+Error Handling:
+- Exponential backoff retry (1s, 5s, 30s, 5min, 30min)
+- Max 5 attempts
+- Audit logging
+- Admin alerts after 3 failures
+
+## 6. DATA MAPPING TO ECONOMIC
+
+Customer → Virksomhed:
+  Sag.bygherre → Name
+  Sag.cvrNr → CVR
+  Sag.adresse → Address
+  Sag.byggelederEmail → Email
+  Sag.byggelederTlf → Phone
+
+Case → Projekt:
+  Sag.sagsnr → Project number
+  Sag.beskrivelse → Description
+  Sag.oprettetDato → Start date
+  Sag.region → Department mapping
+
+Equipment Log → Invoice Line:
+  Category + action → Description
+  Duration calculation → Quantity
+  Cost calculation → Unit price
+  Result → Line item on invoice
+
+Timer Log → Invoice Line:
+  Timer.type → Description (Opsætning, Tilsyn, etc)
+  Timer.hours → Quantity
+  Timer.rate → Unit price
+  Result → Line item on invoice
+
+## 7. CURRENT INTEGRATION STATUS
+
+Flutter App:
+- Core: ✓ Login, Dashboard, Database
+- TODO: Most screens (Sager, SagDetaljer, Affugtere, etc)
+- Backend: Not connected (Supabase setup exists but unused)
+
+React PWA:
+- Core: ✓ Full UI, invoicing, PDF generation
+- Features: ✓ Equipment logging, timer tracking, NFC support
+- Backend: Partial (Supabase configured, minimal usage)
+
+Economic Integration:
+- Status: NOT STARTED
+- Supabase: Configured but not actively syncing
+- Real-time Sync: localStorage-based only, not cloud-based
+
+## 8. NEXT STEPS
+
+For Economic Integration:
+1. Obtain Economic API documentation
+2. Define customer/project mapping rules
+3. Set up Economic sandbox account
+4. Create Supabase backend service
+5. Implement sync layer
+6. Build admin monitoring dashboard
+7. Testing and production deployment
+
+## 9. IMPORTANT NOTES
+
+Sample Test Data (development):
+- Users: Rasmus, Stefan, Christian, Morten, Brian, Nichlas, Tanja
+- Cases: 2024-01, 2024-02
+
+Test PINs:
+- Teknikere: 1234-1239
+- Admin: 0000
+
+Invoice Requirements from Sag:
+- bygherre (customer name)
+- cvrNr (for customer lookup)
+- sagsnr (for project reference)
+- adresse (for invoice address)
+- byggeleder (project contact)
+- All equipment logs within case
+- All timer logs within case
+- All block completions within case
+

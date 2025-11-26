@@ -1,0 +1,23 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# Set the base for rewrites
+RewriteBase /ska-dan-app/
+
+# Don't rewrite existing files or directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite all other URLs to index.html (for SPA routing)
+RewriteRule ^ index.html [L]
+
+# Force correct MIME types
+AddType application/javascript .js
+AddType application/json .json
+AddType image/png .png
+AddType image/x-icon .ico
+
+# Enable compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
+</IfModule>
