@@ -12,7 +12,9 @@ import '../models/kabel_slange_log.dart';
 import '../models/sync_task.dart';
 import '../models/sag_message.dart';
 import '../models/activity_log.dart';
+import '../models/app_setting.dart';
 import 'sync_service.dart';
+import 'settings_service.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -75,6 +77,9 @@ class DatabaseService {
     if (!Hive.isAdapterRegistered(10)) {
       Hive.registerAdapter(ActivityLogAdapter());
     }
+    if (!Hive.isAdapterRegistered(11)) {
+      Hive.registerAdapter(AppSettingAdapter());
+    }
 
     try {
       // Open boxes
@@ -122,6 +127,9 @@ class DatabaseService {
 
     // Initialize sample data if needed
     await initSampleData();
+
+    // Initialize settings service
+    await SettingsService().init();
   }
 
   Future<void> _clearAllBoxes() async {

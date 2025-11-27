@@ -4,6 +4,7 @@ import '../models/kabel_slange_log.dart';
 import '../services/database_service.dart';
 import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/filter_widget.dart';
 
 class KablerSlangerScreen extends StatefulWidget {
   final Sag sag;
@@ -17,6 +18,7 @@ class KablerSlangerScreen extends StatefulWidget {
 class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
   final DatabaseService _db = DatabaseService();
   bool _loading = true;
+  String _categoryFilter = 'alle'; // 'alle', 'slanger', 'kabler'
 
   final List<String> _slangeTypes = [
     'Varmtvandsslange ø32',
@@ -61,6 +63,12 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
   }
 
   List<KabelSlangeLog> _getLogs() {
+    final allLogs = _db.getKabelSlangeLogsBySag(widget.sag.id);
+    if (_categoryFilter == 'alle') return allLogs;
+    return allLogs.where((log) => log.category == _categoryFilter).toList();
+  }
+
+  List<KabelSlangeLog> _getAllLogs() {
     return _db.getKabelSlangeLogsBySag(widget.sag.id);
   }
 
@@ -309,36 +317,12 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
     }
 
     final logs = _getLogs();
+    final allLogs = _getAllLogs();
+    final slangerCount = allLogs.where((log) => log.category == 'slanger').length;
+    final kablerCount = allLogs.where((log) => log.category == 'kabler').length;
 
-    if (logs.isEmpty) {
-      return Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.cable, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                const Text('Ingen kabler og slanger oprettet', style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 8),
-                const Text('Klik på + for at oprette'),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              onPressed: _showAddDialog,
-              child: const Icon(Icons.add),
-            ),
-          ),
-        ],
-      );
-    }
-
-    final slangerLogs = logs.where((log) => log.category == 'slanger').toList();
-    final kablerLogs = logs.where((log) => log.category == 'kabler').toList();
+    final slangerLogs = allLogs.where((log) => log.category == 'slanger').toList();
+    final kablerLogs = allLogs.where((log) => log.category == 'kabler').toList();
 
     final totalMeters = slangerLogs.fold(0.0, (sum, log) => sum + (log.meters ?? 0));
     final totalKabler = kablerLogs.fold(0, (sum, log) => sum + (log.quantity ?? 0));
@@ -382,6 +366,66 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
                 ],
               ),
             ),
+
+            // Standardized Filter Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: FilterBar(
+                filters: [
+                  FilterConfig(
+                    id: 'category',
+                    label: 'Kategori',
+                    type: FilterType.chip,
+                    options: [
+                      FilterOption(value: 'slanger', label: 'Slanger', count: slangerCount, icon: Icons.straighten, color: AppColors.primary),
+                      FilterOption(value: 'kabler', label: 'Kabler', count: kablerCount, icon: Icons.cable, color: AppColors.info),
+                    ],
+                  ),
+                ],
+                values: {'category': _categoryFilter},
+                onFilterChanged: (filterId, value) {
+                  setState(() => _categoryFilter = value?.toString() ?? 'alle');
+                },
+                onReset: () {
+                  setState(() => _categoryFilter = 'alle');
+                },
+              ),
+            ),
+
+            // Results Header
+            FilterResultsHeader(
+              resultCount: logs.length,
+              itemLabel: 'poster',
+              activeFilters: {
+                if (_categoryFilter != 'alle') 'kategori': _categoryFilter == 'slanger' ? 'Slanger' : 'Kabler',
+              },
+              onReset: _categoryFilter != 'alle'
+                  ? () => setState(() => _categoryFilter = 'alle')
+                  : null,
+            ),
+
+            // Empty state or List
+            if (logs.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.cable, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        _categoryFilter != 'alle'
+                            ? 'Ingen ${_categoryFilter == 'slanger' ? 'slanger' : 'kabler'} fundet'
+                            : 'Ingen kabler og slanger oprettet',
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('Klik på + for at oprette'),
+                    ],
+                  ),
+                ),
+              )
+            else
             // List
             Expanded(
               child: ListView.builder(

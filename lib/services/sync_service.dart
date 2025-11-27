@@ -98,7 +98,7 @@ class SyncService {
     }
 
     try {
-      debugPrint('dY", Starter initial sync fra Supabase...');
+      debugPrint('[SYNC] Starter initial sync fra Supabase...');
 
       // NB: skriver direkte til Hive for at undgå nye queueChange-events
 
@@ -109,9 +109,9 @@ class SyncService {
           final user = User.fromJson(data);
           await box.put(user.id, user);
         }
-        debugPrint('�o. Synkroniseret ${usersData.length} brugere');
+        debugPrint('[SYNC] OK - Synkroniseret ${usersData.length} brugere');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente brugere: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente brugere: $e');
       }
 
       try {
@@ -121,9 +121,9 @@ class SyncService {
           final sag = Sag.fromJson(data);
           await box.put(sag.id, sag);
         }
-        debugPrint('�o. Synkroniseret ${sagerData.length} sager');
+        debugPrint('[SYNC] OK - Synkroniseret ${sagerData.length} sager');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente sager: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente sager: $e');
       }
 
       try {
@@ -133,9 +133,9 @@ class SyncService {
           final affugter = Affugter.fromJson(data);
           await box.put(affugter.id, affugter);
         }
-        debugPrint('�o. Synkroniseret ${affugtereData.length} affugtere');
+        debugPrint('[SYNC] OK - Synkroniseret ${affugtereData.length} affugtere');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente affugtere: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente affugtere: $e');
       }
 
       try {
@@ -145,9 +145,9 @@ class SyncService {
           final blok = Blok.fromJson(data);
           await box.put(blok.id, blok);
         }
-        debugPrint('�o. Synkroniseret ${blokkeData.length} blokke');
+        debugPrint('[SYNC] OK - Synkroniseret ${blokkeData.length} blokke');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente blokke: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente blokke: $e');
       }
 
       try {
@@ -157,9 +157,9 @@ class SyncService {
           final completion = BlokCompletion.fromJson(data);
           await box.put(completion.id, completion);
         }
-        debugPrint('�o. Synkroniseret ${completionData.length} blok completions');
+        debugPrint('[SYNC] OK - Synkroniseret ${completionData.length} blok completions');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente blok completions: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente blok completions: $e');
       }
 
       try {
@@ -169,9 +169,9 @@ class SyncService {
           final log = EquipmentLog.fromJson(data);
           await box.put(log.id, log);
         }
-        debugPrint('�o. Synkroniseret ${equipmentData.length} equipment logs');
+        debugPrint('[SYNC] OK - Synkroniseret ${equipmentData.length} equipment logs');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente equipment logs: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente equipment logs: $e');
       }
 
       try {
@@ -181,9 +181,9 @@ class SyncService {
           final log = TimerLog.fromJson(data);
           await box.put(log.id, log);
         }
-        debugPrint('�o. Synkroniseret ${timerData.length} timer logs');
+        debugPrint('[SYNC] OK - Synkroniseret ${timerData.length} timer logs');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente timer logs: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente timer logs: $e');
       }
 
       try {
@@ -193,9 +193,9 @@ class SyncService {
           final log = KabelSlangeLog.fromJson(data);
           await box.put(log.id, log);
         }
-        debugPrint('�o. Synkroniseret ${kabelData.length} kabel/slange logs');
+        debugPrint('[SYNC] OK - Synkroniseret ${kabelData.length} kabel/slange logs');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente kabel/slange logs: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente kabel/slange logs: $e');
       }
 
       try {
@@ -205,9 +205,9 @@ class SyncService {
           final msg = SagMessage.fromJson(data);
           await box.put(msg.id, msg);
         }
-        debugPrint('�o. Synkroniseret ${messageData.length} beskeder');
+        debugPrint('[SYNC] OK - Synkroniseret ${messageData.length} beskeder');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente beskeder: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente beskeder: $e');
       }
 
       try {
@@ -217,15 +217,15 @@ class SyncService {
           final log = ActivityLog.fromJson(data);
           await box.put(log.id, log);
         }
-        debugPrint('�o. Synkroniseret ${activityData.length} aktivitetslogs');
+        debugPrint('[SYNC] OK - Synkroniseret ${activityData.length} aktivitetslogs');
       } catch (e) {
-        debugPrint('�s��,? Kunne ikke hente aktivitetslogs: $e');
+        debugPrint('[SYNC] FEJL - Kunne ikke hente aktivitetslogs: $e');
       }
 
       _initialSyncComplete = true;
-      debugPrint('�o. Initial sync gennemfA,rt');
+      debugPrint('[SYNC] OK - Initial sync gennemfoert');
     } catch (e) {
-      debugPrint('�?O Initial sync fejlede: $e');
+      debugPrint('[SYNC] FEJL - Initial sync fejlede: $e');
     }
   }
 

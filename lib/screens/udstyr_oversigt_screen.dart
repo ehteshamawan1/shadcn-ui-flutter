@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../models/affugter.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/filter_widget.dart';
 
 class UdstyrsOversightScreen extends StatefulWidget {
   const UdstyrsOversightScreen({super.key});
@@ -248,28 +249,50 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
       ),
       body: Column(
         children: [
-          // Filter
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: _statuses
-                  .map(
-                    (status) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: FilterChip(
-                        label: Text(status.toUpperCase()),
-                        selected: _filterStatus == status,
-                        onSelected: (selected) {
-                          setState(() => _filterStatus = status);
-                          _loadAffugtere();
-                        },
-                      ),
-                    ),
-                  )
-                  .toList(),
+          // Standardized Filter Bar with Chips
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: FilterBar(
+              filters: [
+                FilterConfig(
+                  id: 'status',
+                  label: 'Status',
+                  type: FilterType.chip,
+                  options: [
+                    FilterOption(value: 'hjemme', label: 'Hjemme', color: _getStatusColor('hjemme')),
+                    FilterOption(value: 'udlejet', label: 'Udlejet', color: _getStatusColor('udlejet')),
+                    FilterOption(value: 'defekt', label: 'Defekt', color: _getStatusColor('defekt')),
+                  ],
+                  showCount: false,
+                ),
+              ],
+              values: {'status': _filterStatus},
+              onFilterChanged: (filterId, value) {
+                setState(() => _filterStatus = value?.toString() ?? 'alle');
+                _loadAffugtere();
+              },
+              onReset: () {
+                setState(() => _filterStatus = 'alle');
+                _loadAffugtere();
+              },
             ),
           ),
+
+          // Results Header
+          FilterResultsHeader(
+            resultCount: _affugtere.length,
+            itemLabel: 'udstyr',
+            activeFilters: {
+              if (_filterStatus != 'alle') 'status': _filterStatus,
+            },
+            onReset: _filterStatus != 'alle'
+                ? () {
+                    setState(() => _filterStatus = 'alle');
+                    _loadAffugtere();
+                  }
+                : null,
+          ),
+
           // List
           Expanded(
             child: _affugtere.isEmpty

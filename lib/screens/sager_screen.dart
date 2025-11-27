@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../providers/theme_provider.dart';
 import '../models/sag.dart';
+import '../widgets/filter_widget.dart';
 
 class SagerScreen extends StatefulWidget {
   const SagerScreen({super.key});
@@ -326,55 +327,50 @@ class _SagerScreenState extends State<SagerScreen> {
     return AppColors.getRegionColor(region);
   }
 
-  Widget _buildSummaryCard({
-    required String label,
-    required int count,
-    required Color color,
-    required VoidCallback onTap,
-    bool isSelected = false,
-    double? width,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: width,
-        constraints: width == null ? const BoxConstraints(minWidth: 100) : null,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.2) : color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? color : color.withValues(alpha: 0.7),
-            width: isSelected ? 1.6 : 1,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: color.withValues(alpha: 0.9),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+  List<FilterOption> _getTypeFilterOptions(Map<String, int> typeCounts) {
+    return [
+      FilterOption(
+        value: 'udtørring',
+        label: 'Udtørring',
+        count: typeCounts['udtørring'] ?? 0,
+        color: _getTypeColor('udtørring'),
       ),
-    );
+      FilterOption(
+        value: 'varme',
+        label: 'Varme',
+        count: typeCounts['varme'] ?? 0,
+        color: _getTypeColor('varme'),
+      ),
+      FilterOption(
+        value: 'begge',
+        label: 'Begge',
+        count: typeCounts['begge'] ?? 0,
+        color: _getTypeColor('begge'),
+      ),
+    ];
+  }
+
+  List<FilterOption> _getRegionFilterOptions(Map<String, int> regionCounts) {
+    return [
+      FilterOption(
+        value: 'sjælland',
+        label: 'Sjælland',
+        count: regionCounts['sjælland'] ?? 0,
+        color: _getRegionColor('sjælland'),
+      ),
+      FilterOption(
+        value: 'fyn',
+        label: 'Fyn',
+        count: regionCounts['fyn'] ?? 0,
+        color: _getRegionColor('fyn'),
+      ),
+      FilterOption(
+        value: 'jylland',
+        label: 'Jylland',
+        count: regionCounts['jylland'] ?? 0,
+        color: _getRegionColor('jylland'),
+      ),
+    ];
   }
 
   @override
@@ -440,294 +436,195 @@ class _SagerScreenState extends State<SagerScreen> {
           ],
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final screenWidth = constraints.maxWidth;
-          final isNarrow = screenWidth < 500;
-          final dropdownWidth = isNarrow ? (screenWidth - 36) / 2 : 180.0;
-          // Calculate card width based on screen size - always fit all cards
-          final cardSpacing = 8.0;
-          final cardsPerRow = isNarrow ? 3 : 6;
-          final totalSpacing = (cardsPerRow - 1) * cardSpacing;
-          final availableWidth = screenWidth - 24 - totalSpacing;
-          final cardWidth = availableWidth / cardsPerRow;
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Standardized Filter Bar
+            FilterBar(
+              filters: [
+                FilterConfig(
+                  id: 'search',
+                  label: 'Søg',
+                  type: FilterType.search,
+                  hint: 'Søg efter sagsnr, adresse, byggeleder...',
+                ),
+                FilterConfig(
+                  id: 'type',
+                  label: 'Type',
+                  type: FilterType.dropdown,
+                  options: _getTypeFilterOptions(typeCounts),
+                  allOptionLabel: 'Alle typer',
+                ),
+                FilterConfig(
+                  id: 'region',
+                  label: 'Region',
+                  type: FilterType.dropdown,
+                  options: _getRegionFilterOptions(regionCounts),
+                  allOptionLabel: 'Alle regioner',
+                ),
+              ],
+              values: {
+                'search': _searchQuery,
+                'type': _selectedType,
+                'region': _selectedRegion,
+              },
+              onFilterChanged: (filterId, value) {
+                setState(() {
+                  switch (filterId) {
+                    case 'search':
+                      _searchQuery = value?.toString() ?? '';
+                      _searchController.text = _searchQuery;
+                      break;
+                    case 'type':
+                      _selectedType = value?.toString() ?? 'alle';
+                      break;
+                    case 'region':
+                      _selectedRegion = value?.toString() ?? 'alle';
+                      break;
+                  }
+                });
+                _applyFilters();
+              },
+              onReset: () {
+                setState(() {
+                  _searchQuery = '';
+                  _searchController.clear();
+                  _selectedType = 'alle';
+                  _selectedRegion = 'alle';
+                });
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 12),
 
-          return Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    _searchQuery = value;
-                    _applyFilters();
-                  },
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              _searchController.clear();
-                              _searchQuery = '';
-                              _applyFilters();
-                            },
-                          )
-                        : null,
-                    hintText: 'Søg efter sagsnr, adresse, byggeleder...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: Theme.of(context).cardColor.withValues(alpha: 0.5),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.filter_alt_outlined, size: 18),
-                        SizedBox(width: 6),
-                        Text('Filtre:'),
-                      ],
-                    ),
-                    SizedBox(
-                      width: dropdownWidth,
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedType,
-                        decoration: const InputDecoration(
-                          labelText: 'Type',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items: _typeOptions
-                            .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(_formatOptionLabel(type)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() {
-                            _selectedType = value;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: dropdownWidth,
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedRegion,
-                        decoration: const InputDecoration(
-                          labelText: 'Region',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items: _regionOptions
-                            .map(
-                              (region) => DropdownMenuItem(
-                                value: region,
-                                child: Text(_formatOptionLabel(region)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() {
-                            _selectedRegion = value;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: cardSpacing,
-                  runSpacing: cardSpacing,
-                  children: [
-                    _buildSummaryCard(
-                      label: 'Udtørring',
-                      count: typeCounts['udtørring'] ?? 0,
-                      color: _getTypeColor('udtørring'),
-                      width: cardWidth,
-                      onTap: () {
-                        setState(() {
-                          _selectedType =
-                              _selectedType == 'udtørring' ? 'alle' : 'udtørring';
-                        });
-                        _applyFilters();
-                      },
-                      isSelected: _selectedType == 'udtørring',
-                    ),
-                    _buildSummaryCard(
-                      label: 'Varme',
-                      count: typeCounts['varme'] ?? 0,
-                      color: _getTypeColor('varme'),
-                      width: cardWidth,
-                      onTap: () {
-                        setState(() {
-                          _selectedType =
-                              _selectedType == 'varme' ? 'alle' : 'varme';
-                        });
-                        _applyFilters();
-                      },
-                      isSelected: _selectedType == 'varme',
-                    ),
-                    _buildSummaryCard(
-                      label: 'Begge',
-                      count: typeCounts['begge'] ?? 0,
-                      color: _getTypeColor('begge'),
-                      width: cardWidth,
-                      onTap: () {
-                        setState(() {
-                          _selectedType =
-                              _selectedType == 'begge' ? 'alle' : 'begge';
-                        });
-                        _applyFilters();
-                      },
-                      isSelected: _selectedType == 'begge',
-                    ),
-                    _buildSummaryCard(
-                      label: 'Sjælland',
-                      count: regionCounts['sjælland'] ?? 0,
-                      color: _getRegionColor('sjælland'),
-                      width: cardWidth,
-                      onTap: () {
-                        setState(() {
-                          _selectedRegion =
-                              _selectedRegion == 'sjælland' ? 'alle' : 'sjælland';
-                        });
-                        _applyFilters();
-                      },
-                      isSelected: _selectedRegion == 'sjælland',
-                    ),
-                    _buildSummaryCard(
-                      label: 'Fyn',
-                      count: regionCounts['fyn'] ?? 0,
-                      color: _getRegionColor('fyn'),
-                      width: cardWidth,
-                      onTap: () {
-                        setState(() {
-                          _selectedRegion = _selectedRegion == 'fyn' ? 'alle' : 'fyn';
-                        });
-                        _applyFilters();
-                      },
-                      isSelected: _selectedRegion == 'fyn',
-                    ),
-                    _buildSummaryCard(
-                      label: 'Jylland',
-                      count: regionCounts['jylland'] ?? 0,
-                      color: _getRegionColor('jylland'),
-                      width: cardWidth,
-                      onTap: () {
-                        setState(() {
-                          _selectedRegion =
-                              _selectedRegion == 'jylland' ? 'alle' : 'jylland';
-                        });
-                        _applyFilters();
-                      },
-                      isSelected: _selectedRegion == 'jylland',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: _filteredSager.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.folder_open,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _showArchived ? 'Ingen arkiverede sager' : 'Ingen aktive sager',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      color: Colors.grey[600],
-                                    ),
-                              ),
-                            ],
+            // Summary Cards
+            SummaryCardsFilter(
+              options: [
+                ..._getTypeFilterOptions(typeCounts),
+                ..._getRegionFilterOptions(regionCounts),
+              ],
+              selectedValue: _selectedType != 'alle' ? _selectedType : (_selectedRegion != 'alle' ? _selectedRegion : 'alle'),
+              onChanged: (value) {
+                setState(() {
+                  // Check if it's a type or region value
+                  if (['udtørring', 'varme', 'begge'].contains(value)) {
+                    _selectedType = _selectedType == value ? 'alle' : value;
+                  } else if (['sjælland', 'fyn', 'jylland'].contains(value)) {
+                    _selectedRegion = _selectedRegion == value ? 'alle' : value;
+                  } else {
+                    _selectedType = 'alle';
+                    _selectedRegion = 'alle';
+                  }
+                });
+                _applyFilters();
+              },
+              showAllCard: false,
+            ),
+            const SizedBox(height: 8),
+
+            // Results count
+            FilterResultsHeader(
+              resultCount: _filteredSager.length,
+              itemLabel: 'sager',
+              activeFilters: {
+                if (_selectedType != 'alle') 'type': _displaySagType(_selectedType),
+                if (_selectedRegion != 'alle') 'region': _displayRegion(_selectedRegion),
+              },
+              onReset: (_selectedType != 'alle' || _selectedRegion != 'alle' || _searchQuery.isNotEmpty)
+                  ? () {
+                      setState(() {
+                        _searchQuery = '';
+                        _searchController.clear();
+                        _selectedType = 'alle';
+                        _selectedRegion = 'alle';
+                      });
+                      _applyFilters();
+                    }
+                  : null,
+            ),
+
+            // Sager List
+            Expanded(
+              child: _filteredSager.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.folder_open,
+                            size: 64,
+                            color: Colors.grey[400],
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(top: 8),
-                          itemCount: _filteredSager.length,
-                          itemBuilder: (context, index) {
-                            final sag = _filteredSager[index];
-                            final isSelected = _selectedSagerIds.contains(sag.id);
-
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                              color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(
-                                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          const SizedBox(height: 16),
+                          Text(
+                            _showArchived ? 'Ingen arkiverede sager' : 'Ingen aktive sager',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  color: Colors.grey[600],
                                 ),
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  if (_isSelectionMode) {
-                                    _toggleSagSelection(sag.id);
-                                  } else {
-                                    Navigator.of(context).pushNamed('/sager/${sag.id}');
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(top: 8),
+                      itemCount: _filteredSager.length,
+                      itemBuilder: (context, index) {
+                        final sag = _filteredSager[index];
+                        final isSelected = _selectedSagerIds.contains(sag.id);
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                          color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              if (_isSelectionMode) {
+                                _toggleSagSelection(sag.id);
+                              } else {
+                                Navigator.of(context).pushNamed('/sager/${sag.id}');
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Header row: Checkbox (if selection) + Sagsnr + Status + Archive icon
+                                  Row(
                                     children: [
-                                      // Header row: Checkbox (if selection) + Sagsnr + Status + Archive icon
-                                      Row(
-                                        children: [
-                                          if (_isSelectionMode)
-                                            Padding(
-                                              padding: const EdgeInsets.only(right: 8),
-                                              child: Checkbox(
-                                                value: isSelected,
-                                                onChanged: (_) => _toggleSagSelection(sag.id),
-                                              ),
-                                            ),
-                                          Expanded(
-                                            child: Text(
-                                              sag.sagsnr,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 18,
-                                              ),
-                                            ),
+                                      if (_isSelectionMode)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 8),
+                                          child: Checkbox(
+                                            value: isSelected,
+                                            onChanged: (_) => _toggleSagSelection(sag.id),
                                           ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(sag.status),
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            child: Text(
-                                              sag.status,
+                                        ),
+                                      Expanded(
+                                        child: Text(
+                                          sag.sagsnr,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(sag.status),
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Text(
+                                          sag.status,
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 12,
@@ -935,11 +832,9 @@ class _SagerScreenState extends State<SagerScreen> {
                             );
                           },
                         ),
-                ),
-              ],
             ),
-          );
-        },
+          ],
+        ),
       ),
       floatingActionButton: _isSelectionMode
           ? null

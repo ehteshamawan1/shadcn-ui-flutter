@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
+import '../services/settings_service.dart';
 import '../models/affugter.dart';
+import '../models/app_setting.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/filter_widget.dart';
 import 'package:uuid/uuid.dart';
 
 class AffugtereScreen extends StatefulWidget {
@@ -13,6 +16,7 @@ class AffugtereScreen extends StatefulWidget {
 
 class _AffugtereScreenState extends State<AffugtereScreen> {
   final _dbService = DatabaseService();
+  final _settingsService = SettingsService();
   List<Affugter> _affugtere = [];
   String _searchQuery = '';
   String _filterStatus = 'alle';
@@ -20,10 +24,25 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
   String _filterNfc = 'alle'; // 'alle', 'har_nfc', 'mangler_nfc'
   final TextEditingController _searchController = TextEditingController();
 
+  // Dynamic dropdown options from settings
+  List<DropdownOption> _typeOptions = [];
+  List<DropdownOption> _brandOptions = [];
+  List<DropdownOption> _statusOptions = [];
+
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _loadAffugtere();
+  }
+
+  Future<void> _loadSettings() async {
+    await _settingsService.init();
+    setState(() {
+      _typeOptions = _settingsService.getDropdownOptions(SettingCategory.affugterTypes);
+      _brandOptions = _settingsService.getDropdownOptions(SettingCategory.affugterBrands);
+      _statusOptions = _settingsService.getDropdownOptions(SettingCategory.equipmentStatus);
+    });
   }
 
   @override
@@ -191,17 +210,16 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedType,
+                          value: selectedType,
                           decoration: const InputDecoration(
                             labelText: 'Type',
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'adsorption', child: Text('Udtørring - Adsorption')),
-                            DropdownMenuItem(value: 'kondens', child: Text('Udtørring - Kondens')),
-                            DropdownMenuItem(value: 'varme', child: Text('Varme')),
-                          ],
+                          items: _typeOptions.map((opt) => DropdownMenuItem(
+                            value: opt.value,
+                            child: Text(opt.label),
+                          )).toList(),
                           onChanged: (value) {
                             if (value != null) {
                               setDialogState(() => selectedType = value);
@@ -212,19 +230,16 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedMaerke,
+                          value: selectedMaerke,
                           decoration: const InputDecoration(
                             labelText: 'Mærke',
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'Master', child: Text('Master')),
-                            DropdownMenuItem(value: 'Fral', child: Text('Fral')),
-                            DropdownMenuItem(value: 'Qube', child: Text('Qube')),
-                            DropdownMenuItem(value: 'Dantherm', child: Text('Dantherm')),
-                            DropdownMenuItem(value: 'Andet', child: Text('Andet')),
-                          ],
+                          items: _brandOptions.map((opt) => DropdownMenuItem(
+                            value: opt.value,
+                            child: Text(opt.label),
+                          )).toList(),
                           onChanged: (value) {
                             if (value != null) {
                               setDialogState(() => selectedMaerke = value);
@@ -262,17 +277,16 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedStatus,
+                    value: selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'hjemme', child: Text('Hjemme')),
-                      DropdownMenuItem(value: 'udlejet', child: Text('Udlejet')),
-                      DropdownMenuItem(value: 'defekt', child: Text('Defekt')),
-                    ],
+                    items: _statusOptions.map((opt) => DropdownMenuItem(
+                      value: opt.value,
+                      child: Text(opt.label),
+                    )).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setDialogState(() => selectedStatus = value);
@@ -419,17 +433,16 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: selectedType,
+                          value: _getValidValue(selectedType, _typeOptions),
                           decoration: const InputDecoration(
                             labelText: 'Type',
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'adsorption', child: Text('Udtørring - Adsorption')),
-                            DropdownMenuItem(value: 'kondens', child: Text('Udtørring - Kondens')),
-                            DropdownMenuItem(value: 'varme', child: Text('Varme')),
-                          ],
+                          items: _typeOptions.map((opt) => DropdownMenuItem(
+                            value: opt.value,
+                            child: Text(opt.label),
+                          )).toList(),
                           onChanged: (value) {
                             if (value != null) {
                               setDialogState(() => selectedType = value);
@@ -440,19 +453,16 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _getMaerkeValue(selectedMaerke),
+                          value: _getValidValue(selectedMaerke, _brandOptions),
                           decoration: const InputDecoration(
                             labelText: 'Mærke',
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'Master', child: Text('Master')),
-                            DropdownMenuItem(value: 'Fral', child: Text('Fral')),
-                            DropdownMenuItem(value: 'Qube', child: Text('Qube')),
-                            DropdownMenuItem(value: 'Dantherm', child: Text('Dantherm')),
-                            DropdownMenuItem(value: 'Andet', child: Text('Andet')),
-                          ],
+                          items: _brandOptions.map((opt) => DropdownMenuItem(
+                            value: opt.value,
+                            child: Text(opt.label),
+                          )).toList(),
                           onChanged: (value) {
                             if (value != null) {
                               setDialogState(() => selectedMaerke = value);
@@ -490,17 +500,16 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    value: _getValidValue(selectedStatus, _statusOptions),
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'hjemme', child: Text('Hjemme')),
-                      DropdownMenuItem(value: 'udlejet', child: Text('Udlejet')),
-                      DropdownMenuItem(value: 'defekt', child: Text('Defekt')),
-                    ],
+                    items: _statusOptions.map((opt) => DropdownMenuItem(
+                      value: opt.value,
+                      child: Text(opt.label),
+                    )).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setDialogState(() => selectedStatus = value);
@@ -577,9 +586,17 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
     );
   }
 
-  String _getMaerkeValue(String maerke) {
-    const validMaerker = ['Master', 'Fral', 'Qube', 'Dantherm', 'Andet'];
-    return validMaerker.contains(maerke) ? maerke : 'Andet';
+  /// Get valid value from options list, fallback to first option or 'Andet' if not found
+  String? _getValidValue(String value, List<DropdownOption> options) {
+    if (options.isEmpty) return null;
+    final hasValue = options.any((opt) => opt.value == value);
+    if (hasValue) return value;
+    // Try to find 'Andet' as fallback
+    final andetOption = options.firstWhere(
+      (opt) => opt.value.toLowerCase() == 'andet',
+      orElse: () => options.first,
+    );
+    return andetOption.value;
   }
 
   void _deleteAffugter(Affugter affugter) {
@@ -673,199 +690,124 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
       ),
       body: Column(
         children: [
-          // Stats cards - Status
-          Container(
+          // Standardized Summary Cards
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildStatCard(
-                      'Hjemme',
-                      counts['hjemme'] ?? 0,
-                      _getStatusColor('hjemme'),
-                      Icons.home,
-                      _filterStatus == 'hjemme',
-                      () => setState(() => _filterStatus = _filterStatus == 'hjemme' ? 'alle' : 'hjemme'),
-                      constraints.maxWidth,
-                    ),
-                    _buildStatCard(
-                      'Udlejet',
-                      counts['udlejet'] ?? 0,
-                      _getStatusColor('udlejet'),
-                      Icons.local_shipping,
-                      _filterStatus == 'udlejet',
-                      () => setState(() => _filterStatus = _filterStatus == 'udlejet' ? 'alle' : 'udlejet'),
-                      constraints.maxWidth,
-                    ),
-                    _buildStatCard(
-                      'Defekt',
-                      counts['defekt'] ?? 0,
-                      _getStatusColor('defekt'),
-                      Icons.warning,
-                      _filterStatus == 'defekt',
-                      () => setState(() => _filterStatus = _filterStatus == 'defekt' ? 'alle' : 'defekt'),
-                      constraints.maxWidth,
-                    ),
-                    _buildStatCard(
-                      'Total',
-                      _affugtere.length,
-                      Theme.of(context).colorScheme.primary,
-                      Icons.air,
-                      _filterStatus == 'alle',
-                      () => setState(() => _filterStatus = 'alle'),
-                      constraints.maxWidth,
-                    ),
+            child: SummaryCardsFilter(
+              options: [
+                FilterOption(
+                  value: 'hjemme',
+                  label: 'Hjemme',
+                  count: counts['hjemme'] ?? 0,
+                  icon: Icons.home,
+                  color: _getStatusColor('hjemme'),
+                ),
+                FilterOption(
+                  value: 'udlejet',
+                  label: 'Udlejet',
+                  count: counts['udlejet'] ?? 0,
+                  icon: Icons.local_shipping,
+                  color: _getStatusColor('udlejet'),
+                ),
+                FilterOption(
+                  value: 'defekt',
+                  label: 'Defekt',
+                  count: counts['defekt'] ?? 0,
+                  icon: Icons.warning,
+                  color: _getStatusColor('defekt'),
+                ),
+              ],
+              selectedValue: _filterStatus,
+              onChanged: (value) => setState(() => _filterStatus = value),
+              totalCount: _affugtere.length,
+              allLabel: 'Total',
+            ),
+          ),
+
+          // Standardized Filter Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: FilterBar(
+              filters: [
+                FilterConfig(
+                  id: 'search',
+                  label: 'Søg',
+                  type: FilterType.search,
+                  hint: 'Søg efter tag, mærke, model...',
+                ),
+                FilterConfig(
+                  id: 'type',
+                  label: 'Type',
+                  type: FilterType.dropdown,
+                  options: [
+                    FilterOption(value: 'udtørring', label: 'Udtørring', count: typeCounts['udtørring']),
+                    FilterOption(value: 'adsorption', label: 'Adsorption', count: typeCounts['adsorption']),
+                    FilterOption(value: 'kondens', label: 'Kondens', count: typeCounts['kondens']),
+                    FilterOption(value: 'varme', label: 'Varme', count: typeCounts['varme']),
                   ],
-                );
+                  allOptionLabel: 'Alle typer',
+                ),
+                FilterConfig(
+                  id: 'nfc',
+                  label: 'NFC',
+                  type: FilterType.tristate,
+                  options: [
+                    FilterOption(value: 'har_nfc', label: 'Har NFC', count: nfcCounts['har_nfc'], icon: Icons.nfc),
+                    FilterOption(value: 'mangler_nfc', label: 'Mangler NFC', count: nfcCounts['mangler_nfc'], icon: Icons.nfc),
+                  ],
+                ),
+              ],
+              values: {
+                'search': _searchQuery,
+                'type': _filterType,
+                'nfc': _filterNfc,
+              },
+              onFilterChanged: (filterId, value) {
+                setState(() {
+                  switch (filterId) {
+                    case 'search':
+                      _searchQuery = value?.toString() ?? '';
+                      _searchController.text = _searchQuery;
+                      break;
+                    case 'type':
+                      _filterType = value?.toString() ?? 'alle';
+                      break;
+                    case 'nfc':
+                      _filterNfc = value?.toString() ?? 'alle';
+                      break;
+                  }
+                });
+              },
+              onReset: () {
+                setState(() {
+                  _searchQuery = '';
+                  _searchController.clear();
+                  _filterStatus = 'alle';
+                  _filterType = 'alle';
+                  _filterNfc = 'alle';
+                });
               },
             ),
           ),
 
-          // Filter row - Type dropdown and NFC checkbox
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                // Type dropdown
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _filterType,
-                    decoration: const InputDecoration(
-                      labelText: 'Type',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: [
-                      DropdownMenuItem(value: 'alle', child: Text('Alle typer (${_affugtere.length})')),
-                      DropdownMenuItem(value: 'udtørring', child: Text('Udtørring (${typeCounts['udtørring']})')),
-                      DropdownMenuItem(value: 'adsorption', child: Text('Udtørring • Adsorption (${typeCounts['adsorption']})')),
-                      DropdownMenuItem(value: 'kondens', child: Text('Udtørring • Kondens (${typeCounts['kondens']})')),
-                      DropdownMenuItem(value: 'varme', child: Text('Varme (${typeCounts['varme']})')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _filterType = value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // NFC checkbox
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Checkbox(
-                      value: _filterNfc == 'har_nfc',
-                      tristate: true,
-                      onChanged: (value) {
-                        setState(() {
-                          if (value == null) {
-                            _filterNfc = 'alle';
-                          } else if (value) {
-                            _filterNfc = 'har_nfc';
-                          } else {
-                            _filterNfc = 'mangler_nfc';
-                          }
-                        });
-                      },
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (_filterNfc == 'alle') {
-                            _filterNfc = 'har_nfc';
-                          } else if (_filterNfc == 'har_nfc') {
-                            _filterNfc = 'mangler_nfc';
-                          } else {
-                            _filterNfc = 'alle';
-                          }
-                        });
-                      },
-                      child: Row(
-                        children: [
-                          const Icon(Icons.nfc, size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            _filterNfc == 'alle'
-                                ? 'NFC (${nfcCounts['har_nfc']}/${_affugtere.length})'
-                                : _filterNfc == 'har_nfc'
-                                    ? 'Har NFC (${nfcCounts['har_nfc']})'
-                                    : 'Mangler NFC (${nfcCounts['mangler_nfc']})',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: _filterNfc == 'har_nfc'
-                                  ? Colors.green
-                                  : _filterNfc == 'mangler_nfc'
-                                      ? Colors.orange
-                                      : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Søg efter tag, mærke, model...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Results count
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  '${filtered.length} udstyr${_filterStatus != 'alle' ? ' ($_filterStatus)' : ''}${_filterType != 'alle' ? ' • $_filterType' : ''}${_filterNfc != 'alle' ? ' • ${_filterNfc == 'har_nfc' ? 'med NFC' : 'uden NFC'}' : ''}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (_filterStatus != 'alle' || _filterType != 'alle' || _filterNfc != 'alle') ...[
-                  const Spacer(),
-                  TextButton.icon(
-                    icon: const Icon(Icons.clear_all, size: 16),
-                    label: const Text('Nulstil'),
-                    onPressed: () => setState(() {
+          // Standardized Results Header
+          FilterResultsHeader(
+            resultCount: filtered.length,
+            itemLabel: 'udstyr',
+            activeFilters: {
+              if (_filterStatus != 'alle') 'status': _filterStatus,
+              if (_filterType != 'alle') 'type': _filterType,
+              if (_filterNfc != 'alle') 'nfc': _filterNfc == 'har_nfc' ? 'med NFC' : 'uden NFC',
+            },
+            onReset: (_filterStatus != 'alle' || _filterType != 'alle' || _filterNfc != 'alle' || _searchQuery.isNotEmpty)
+                ? () => setState(() {
+                      _searchQuery = '';
+                      _searchController.clear();
                       _filterStatus = 'alle';
                       _filterType = 'alle';
                       _filterNfc = 'alle';
-                    }),
-                  ),
-                ],
-              ],
-            ),
+                    })
+                : null,
           ),
           const SizedBox(height: 8),
 
