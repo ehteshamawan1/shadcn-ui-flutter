@@ -20,6 +20,7 @@ import 'database_service.dart';
 import 'remote_sync_client.dart';
 
 /// Handles queuing of local changes and pushes them to the cloud once online.
+/// Also subscribes to Supabase real-time changes for cross-device sync.
 class SyncService {
   SyncService._internal();
   static final SyncService _instance = SyncService._internal();
@@ -33,6 +34,10 @@ class SyncService {
   bool _initialized = false;
   bool _isSyncing = false;
   bool _initialSyncComplete = false;
+  bool _realtimeSubscribed = false;
+
+  // Callbacks for notifying UI of real-time changes
+  final List<void Function(String entityType, String action, Map<String, dynamic> data)> _realtimeListeners = [];
 
   Future<void> init() async {
     if (_initialized) return;
@@ -40,11 +45,18 @@ class SyncService {
     _queueBox = Hive.box<SyncTask>(DatabaseService.syncQueueBox);
     _initialized = true;
 
+    // Setup real-time change handler
+    _remoteClient.addChangeCallback(_handleRealtimeChange);
+
     // Lyt på connectivity og sync når vi kommer online
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
       (status) async {
         if (_isOnline(status)) {
           await syncPending();
+          // Subscribe to real-time when online
+          if (!_realtimeSubscribed) {
+            await _subscribeToRealtime();
+          }
         }
       },
     );
@@ -54,15 +66,189 @@ class SyncService {
     if (_isOnline(status)) {
       await pullFromRemote(); // hent først
       await syncPending(); // skub derefter
+      await _subscribeToRealtime(); // start real-time
     }
   }
 
   void dispose() {
     _connectivitySub?.cancel();
+    _remoteClient.removeChangeCallback(_handleRealtimeChange);
+    _remoteClient.dispose();
+    _realtimeListeners.clear();
   }
 
   bool get hasPending => (_queueBox?.isNotEmpty ?? false);
   bool get isInitialSyncComplete => _initialSyncComplete;
+  bool get isRealtimeActive => _realtimeSubscribed;
+
+  /// Get count of pending changes
+  int get pendingChangesCount => _queueBox?.length ?? 0;
+
+  /// Add a listener for real-time changes from other devices
+  void addRealtimeListener(void Function(String entityType, String action, Map<String, dynamic> data) listener) {
+    _realtimeListeners.add(listener);
+  }
+
+  /// Remove a real-time listener
+  void removeRealtimeListener(void Function(String entityType, String action, Map<String, dynamic> data) listener) {
+    _realtimeListeners.remove(listener);
+  }
+
+  /// Subscribe to Supabase real-time changes
+  Future<void> _subscribeToRealtime() async {
+    if (_realtimeSubscribed) return;
+
+    await _remoteClient.subscribeToRealtimeChanges();
+    _realtimeSubscribed = true;
+    debugPrint('[SYNC] Real-time abonnement startet');
+  }
+
+  /// Handle real-time changes from Supabase
+  void _handleRealtimeChange(String table, String eventType, Map<String, dynamic> data) {
+    debugPrint('[SYNC] Real-time ændring modtaget: $table/$eventType');
+
+    // Convert table name to entity type
+    final entityType = _entityTypeFor(table);
+
+    // Update local Hive database
+    _updateLocalFromRealtime(table, eventType, data);
+
+    // Notify listeners (for UI updates)
+    final action = eventType.toLowerCase();
+    for (final listener in _realtimeListeners) {
+      try {
+        listener(entityType, action, data);
+      } catch (e) {
+        debugPrint('[SYNC] Listener fejl: $e');
+      }
+    }
+  }
+
+  /// Update local Hive database from real-time change
+  Future<void> _updateLocalFromRealtime(String table, String eventType, Map<String, dynamic> data) async {
+    try {
+      switch (table) {
+        case 'users':
+          final box = Hive.box<User>(DatabaseService.usersBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final user = User.fromJson(data);
+            await box.put(user.id, user);
+          }
+          break;
+
+        case 'sager':
+          final box = Hive.box<Sag>(DatabaseService.sagerBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final sag = Sag.fromJson(data);
+            await box.put(sag.id, sag);
+          }
+          break;
+
+        case 'affugtere':
+          final box = Hive.box<Affugter>(DatabaseService.affugtereBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final affugter = Affugter.fromJson(data);
+            await box.put(affugter.id, affugter);
+          }
+          break;
+
+        case 'blokke':
+          final box = Hive.box<Blok>(DatabaseService.blokkeBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final blok = Blok.fromJson(data);
+            await box.put(blok.id, blok);
+          }
+          break;
+
+        case 'blok_completions':
+          final box = Hive.box<BlokCompletion>(DatabaseService.blokCompletionsBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final completion = BlokCompletion.fromJson(data);
+            await box.put(completion.id, completion);
+          }
+          break;
+
+        case 'equipment_logs':
+          final box = Hive.box<EquipmentLog>(DatabaseService.equipmentLogsBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final log = EquipmentLog.fromJson(data);
+            await box.put(log.id, log);
+          }
+          break;
+
+        case 'timer_logs':
+          final box = Hive.box<TimerLog>(DatabaseService.timerLogsBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final log = TimerLog.fromJson(data);
+            await box.put(log.id, log);
+          }
+          break;
+
+        case 'kabel_slange_logs':
+          final box = Hive.box<KabelSlangeLog>(DatabaseService.kabelSlangeLogsBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final log = KabelSlangeLog.fromJson(data);
+            await box.put(log.id, log);
+          }
+          break;
+
+        case 'messages':
+          final box = Hive.box<SagMessage>(DatabaseService.messagesBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final msg = SagMessage.fromJson(data);
+            await box.put(msg.id, msg);
+          }
+          break;
+
+        case 'activity_logs':
+          final box = Hive.box<ActivityLog>(DatabaseService.activityLogsBox);
+          if (eventType == 'DELETE') {
+            await box.delete(data['id']);
+          } else {
+            final log = ActivityLog.fromJson(data);
+            await box.put(log.id, log);
+          }
+          break;
+      }
+      debugPrint('[SYNC] Lokal database opdateret fra real-time: $table/$eventType');
+    } catch (e) {
+      debugPrint('[SYNC] Fejl ved opdatering af lokal database: $e');
+    }
+  }
+
+  String _entityTypeFor(String table) {
+    switch (table) {
+      case 'users': return 'user';
+      case 'sager': return 'sag';
+      case 'affugtere': return 'affugter';
+      case 'equipment_logs': return 'equipment';
+      case 'timer_logs': return 'timer';
+      case 'blokke': return 'blok';
+      case 'blok_completions': return 'blok_completion';
+      case 'kabel_slange_logs': return 'kabel';
+      case 'messages': return 'besked';
+      case 'activity_logs': return 'activity';
+      default: return table;
+    }
+  }
 
   /// Add a change to the queue. Data is stored locally and retried until success.
   Future<void> queueChange({

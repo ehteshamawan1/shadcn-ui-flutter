@@ -1310,8 +1310,8 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
               itemCount: _activityLogs.length,
               itemBuilder: (context, index) {
                 final entry = _activityLogs[index];
-                final icon = _activityIcon(entry.type);
-                final color = _activityColor(entry.type);
+                final icon = _activityIcon(entry.entityType);
+                final color = _activityColor(entry.entityType);
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1324,12 +1324,12 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                       ),
                       child: Icon(icon, color: color),
                     ),
-                    title: Text(entry.description, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(entry.displayDescription, style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (entry.user?.isNotEmpty == true)
-                          Text('Af ${entry.user}', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[700])),
+                        if (entry.userName?.isNotEmpty == true)
+                          Text('Af ${entry.userName}', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[700])),
                         Text(
                           entry.timestamp.replaceFirst('T', ' ').split('.').first,
                           style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),

@@ -158,21 +158,39 @@ class DatabaseService {
   // Users
   Box<User> get _usersBox => Hive.box<User>(usersBox);
 
-  Future<void> addUser(User user) async {
+  Future<void> addUser(User user, {String? byUserName}) async {
     await _usersBox.put(user.id, user);
     await _syncService.queueChange(
       entityType: 'user',
       operation: 'upsert',
       payload: user.toJson(),
     );
+    await logActivity(
+      entityType: 'user',
+      action: 'create',
+      entityId: user.id,
+      description: 'Ny bruger oprettet: ${user.name}',
+      newData: user.toJson(),
+      userName: byUserName,
+    );
   }
 
-  Future<void> updateUser(User user) async {
+  Future<void> updateUser(User user, {String? byUserName}) async {
+    final oldUser = _usersBox.get(user.id);
     await _usersBox.put(user.id, user);
     await _syncService.queueChange(
       entityType: 'user',
       operation: 'upsert',
       payload: user.toJson(),
+    );
+    await logActivity(
+      entityType: 'user',
+      action: 'update',
+      entityId: user.id,
+      description: 'Bruger opdateret: ${user.name}',
+      oldData: oldUser?.toJson(),
+      newData: user.toJson(),
+      userName: byUserName,
     );
   }
 
@@ -184,12 +202,21 @@ class DatabaseService {
     return _usersBox.values.toList();
   }
 
-  Future<void> deleteUser(String id) async {
+  Future<void> deleteUser(String id, {String? byUserName}) async {
+    final oldUser = _usersBox.get(id);
     await _usersBox.delete(id);
     await _syncService.queueChange(
       entityType: 'user',
       operation: 'delete',
       payload: {'id': id},
+    );
+    await logActivity(
+      entityType: 'user',
+      action: 'delete',
+      entityId: id,
+      description: 'Bruger slettet: ${oldUser?.name ?? id}',
+      oldData: oldUser?.toJson(),
+      userName: byUserName,
     );
   }
 
@@ -254,12 +281,20 @@ class DatabaseService {
   // Affugtere
   Box<Affugter> get _affugtereBox => Hive.box<Affugter>(affugtereBox);
 
-  Future<void> addAffugter(Affugter affugter) async {
+  Future<void> addAffugter(Affugter affugter, {String? byUserName}) async {
     await _affugtereBox.put(affugter.id, affugter);
     await _syncService.queueChange(
       entityType: 'affugter',
       operation: 'upsert',
       payload: affugter.toJson(),
+    );
+    await logActivity(
+      entityType: 'affugter',
+      action: 'create',
+      entityId: affugter.id,
+      description: 'Ny affugter oprettet: ${affugter.nr} (${affugter.maerke ?? ''} ${affugter.model ?? ''})',
+      newData: affugter.toJson(),
+      userName: byUserName,
     );
   }
 
@@ -278,21 +313,63 @@ class DatabaseService {
     return _affugtereBox.values.toList();
   }
 
-  Future<void> updateAffugter(Affugter affugter) async {
+  Future<void> updateAffugter(Affugter affugter, {String? byUserName, String? sagId}) async {
+    final oldAffugter = _affugtereBox.get(affugter.id);
     await _affugtereBox.put(affugter.id, affugter);
     await _syncService.queueChange(
       entityType: 'affugter',
       operation: 'upsert',
       payload: affugter.toJson(),
     );
+
+    // Determine action and description based on what changed
+    String action = 'update';
+    String description = 'Affugter opdateret: ${affugter.nr}';
+
+    if (oldAffugter != null) {
+      // Check if status changed
+      if (oldAffugter.status != affugter.status) {
+        description = 'Affugter ${affugter.nr} status ændret: ${oldAffugter.status} -> ${affugter.status}';
+      }
+      // Check if assigned to a sag
+      if (oldAffugter.currentSagId != affugter.currentSagId) {
+        if (affugter.currentSagId != null && affugter.currentSagId!.isNotEmpty) {
+          action = 'assign';
+          description = 'Affugter ${affugter.nr} tildelt til sag';
+        } else {
+          action = 'unassign';
+          description = 'Affugter ${affugter.nr} fjernet fra sag';
+        }
+      }
+    }
+
+    await logActivity(
+      entityType: 'affugter',
+      action: action,
+      entityId: affugter.id,
+      sagId: sagId ?? affugter.currentSagId,
+      description: description,
+      oldData: oldAffugter?.toJson(),
+      newData: affugter.toJson(),
+      userName: byUserName,
+    );
   }
 
-  Future<void> deleteAffugter(String id) async {
+  Future<void> deleteAffugter(String id, {String? byUserName}) async {
+    final oldAffugter = _affugtereBox.get(id);
     await _affugtereBox.delete(id);
     await _syncService.queueChange(
       entityType: 'affugter',
       operation: 'delete',
       payload: {'id': id},
+    );
+    await logActivity(
+      entityType: 'affugter',
+      action: 'delete',
+      entityId: id,
+      description: 'Affugter slettet: ${oldAffugter?.nr ?? id}',
+      oldData: oldAffugter?.toJson(),
+      userName: byUserName,
     );
   }
 
@@ -466,11 +543,66 @@ class DatabaseService {
     return items;
   }
 
+  List<SagMessage> getAllMessages() {
+    return _messagesBox.values.toList();
+  }
+
   // Activity logs
   List<ActivityLog> getActivityLogsBySag(String sagId) {
     final items = _activityLogsBox.values.where((a) => a.sagId == sagId).toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return items;
+  }
+
+  List<ActivityLog> getAllActivityLogs() {
+    final items = _activityLogsBox.values.toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return items;
+  }
+
+  List<ActivityLog> getActivityLogsByEntityType(String entityType) {
+    final items = _activityLogsBox.values.where((a) => a.entityType == entityType).toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return items;
+  }
+
+  List<ActivityLog> getActivityLogsByUser(String userId) {
+    final items = _activityLogsBox.values.where((a) => a.userId == userId).toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return items;
+  }
+
+  /// Get recent activity logs with optional filters
+  List<ActivityLog> getRecentActivityLogs({
+    int limit = 50,
+    String? entityType,
+    String? action,
+    String? sagId,
+    DateTime? since,
+  }) {
+    var items = _activityLogsBox.values.toList();
+
+    if (entityType != null) {
+      items = items.where((a) => a.entityType == entityType).toList();
+    }
+    if (action != null) {
+      items = items.where((a) => a.action == action).toList();
+    }
+    if (sagId != null) {
+      items = items.where((a) => a.sagId == sagId).toList();
+    }
+    if (since != null) {
+      items = items.where((a) {
+        try {
+          return DateTime.parse(a.timestamp).isAfter(since);
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
+
+    items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return items.take(limit).toList();
   }
 
   // Kabel/Slange Logs
@@ -535,6 +667,63 @@ class DatabaseService {
     return _kabelSlangeLogsBox.values.toList();
   }
 
+  /// Log an activity with detailed change tracking
+  Future<void> logActivity({
+    required String entityType,
+    required String action,
+    String? entityId,
+    String? sagId,
+    String? description,
+    Map<String, dynamic>? oldData,
+    Map<String, dynamic>? newData,
+    String? userId,
+    String? userName,
+  }) async {
+    final entry = ActivityLog(
+      id: _uuid.v4(),
+      entityType: entityType,
+      action: action,
+      entityId: entityId,
+      sagId: sagId,
+      description: description,
+      oldData: oldData,
+      newData: newData,
+      userId: userId,
+      userName: userName,
+      timestamp: DateTime.now().toIso8601String(),
+    );
+    await _activityLogsBox.put(entry.id, entry);
+    debugPrint('Activity logged: $entityType/$action${entityId != null ? ' for $entityId' : ''}');
+
+    // Queue the activity log for sync to Supabase
+    await _syncService.queueChange(
+      entityType: 'activity_log',
+      operation: 'upsert',
+      payload: entry.toJson(),
+    );
+
+    // Notify listeners that activity log has been updated
+    _notifyActivityLogListeners(entry);
+  }
+
+  // Activity log listeners for real-time updates
+  final List<void Function(ActivityLog)> _activityLogListeners = [];
+
+  void addActivityLogListener(void Function(ActivityLog) listener) {
+    _activityLogListeners.add(listener);
+  }
+
+  void removeActivityLogListener(void Function(ActivityLog) listener) {
+    _activityLogListeners.remove(listener);
+  }
+
+  void _notifyActivityLogListeners(ActivityLog entry) {
+    for (final listener in _activityLogListeners) {
+      listener(entry);
+    }
+  }
+
+  /// Legacy helper for backwards compatibility
   Future<void> _logActivity({
     required String sagId,
     required String type,
@@ -542,23 +731,12 @@ class DatabaseService {
     required String description,
     String? user,
   }) async {
-    final entry = ActivityLog(
-      id: _uuid.v4(),
-      sagId: sagId,
-      type: type,
+    await logActivity(
+      entityType: type,
       action: action,
+      sagId: sagId,
       description: description,
-      timestamp: DateTime.now().toIso8601String(),
-      user: user,
-    );
-    await _activityLogsBox.put(entry.id, entry);
-    debugPrint('Activity logged: $type/$action for sag $sagId');
-
-    // Queue the activity log for sync to Supabase
-    await _syncService.queueChange(
-      entityType: 'activity_log',
-      operation: 'upsert',
-      payload: entry.toJson(),
+      userName: user,
     );
   }
 
@@ -685,7 +863,193 @@ class DatabaseService {
     await _affugtereBox.clear();
     await _equipmentLogsBox.clear();
     await _timerLogsBox.clear();
-    print('🗑️ All data cleared');
+    await _blokkeBox.clear();
+    await _blokCompletionsBox.clear();
+    await _kabelSlangeLogsBox.clear();
+    await _messagesBox.clear();
+    await _activityLogsBox.clear();
+    debugPrint('All data cleared');
+  }
+
+  /// Import data from a backup JSON structure
+  /// This clears all existing data and replaces it with backup data
+  Future<void> importFromBackup(Map<String, dynamic> backupData) async {
+    final data = backupData['data'] as Map<String, dynamic>;
+
+    // Clear all existing data first
+    await clearAllData();
+
+    // Import users
+    if (data['users'] != null) {
+      for (final json in data['users'] as List) {
+        final user = User.fromJson(Map<String, dynamic>.from(json as Map));
+        await _usersBox.put(user.id, user);
+      }
+      debugPrint('Imported ${(data['users'] as List).length} users');
+    }
+
+    // Import sager
+    if (data['sager'] != null) {
+      for (final json in data['sager'] as List) {
+        final sag = Sag.fromJson(Map<String, dynamic>.from(json as Map));
+        await _sagerBox.put(sag.id, sag);
+      }
+      debugPrint('Imported ${(data['sager'] as List).length} sager');
+    }
+
+    // Import affugtere
+    if (data['affugtere'] != null) {
+      for (final json in data['affugtere'] as List) {
+        final affugter = Affugter.fromJson(Map<String, dynamic>.from(json as Map));
+        await _affugtereBox.put(affugter.id, affugter);
+      }
+      debugPrint('Imported ${(data['affugtere'] as List).length} affugtere');
+    }
+
+    // Import blokke
+    if (data['blokke'] != null) {
+      for (final json in data['blokke'] as List) {
+        final blok = Blok.fromJson(Map<String, dynamic>.from(json as Map));
+        await _blokkeBox.put(blok.id, blok);
+      }
+      debugPrint('Imported ${(data['blokke'] as List).length} blokke');
+    }
+
+    // Import equipment logs
+    if (data['equipmentLogs'] != null) {
+      for (final json in data['equipmentLogs'] as List) {
+        final log = EquipmentLog.fromJson(Map<String, dynamic>.from(json as Map));
+        await _equipmentLogsBox.put(log.id, log);
+      }
+      debugPrint('Imported ${(data['equipmentLogs'] as List).length} equipment logs');
+    }
+
+    // Import timer logs
+    if (data['timerLogs'] != null) {
+      for (final json in data['timerLogs'] as List) {
+        final log = TimerLog.fromJson(Map<String, dynamic>.from(json as Map));
+        await _timerLogsBox.put(log.id, log);
+      }
+      debugPrint('Imported ${(data['timerLogs'] as List).length} timer logs');
+    }
+
+    // Import kabel/slange logs
+    if (data['kabelSlangeLogs'] != null) {
+      for (final json in data['kabelSlangeLogs'] as List) {
+        final log = KabelSlangeLog.fromJson(Map<String, dynamic>.from(json as Map));
+        await _kabelSlangeLogsBox.put(log.id, log);
+      }
+      debugPrint('Imported ${(data['kabelSlangeLogs'] as List).length} kabel/slange logs');
+    }
+
+    // Import messages
+    if (data['messages'] != null) {
+      for (final json in data['messages'] as List) {
+        final message = SagMessage.fromJson(Map<String, dynamic>.from(json as Map));
+        await _messagesBox.put(message.id, message);
+      }
+      debugPrint('Imported ${(data['messages'] as List).length} messages');
+    }
+
+    // Import activity logs
+    if (data['activityLogs'] != null) {
+      for (final json in data['activityLogs'] as List) {
+        final log = ActivityLog.fromJson(Map<String, dynamic>.from(json as Map));
+        await _activityLogsBox.put(log.id, log);
+      }
+      debugPrint('Imported ${(data['activityLogs'] as List).length} activity logs');
+    }
+
+    // Queue all imported data for sync to Supabase
+    await _queueAllDataForSync();
+
+    debugPrint('Backup import completed successfully');
+  }
+
+  /// Queue all current data for sync to Supabase
+  Future<void> _queueAllDataForSync() async {
+    // Queue users
+    for (final user in _usersBox.values) {
+      await _syncService.queueChange(
+        entityType: 'user',
+        operation: 'upsert',
+        payload: user.toJson(),
+      );
+    }
+
+    // Queue sager
+    for (final sag in _sagerBox.values) {
+      await _syncService.queueChange(
+        entityType: 'sag',
+        operation: 'upsert',
+        payload: sag.toJson(),
+      );
+    }
+
+    // Queue affugtere
+    for (final affugter in _affugtereBox.values) {
+      await _syncService.queueChange(
+        entityType: 'affugter',
+        operation: 'upsert',
+        payload: affugter.toJson(),
+      );
+    }
+
+    // Queue blokke
+    for (final blok in _blokkeBox.values) {
+      await _syncService.queueChange(
+        entityType: 'blok',
+        operation: 'upsert',
+        payload: blok.toJson(),
+      );
+    }
+
+    // Queue equipment logs
+    for (final log in _equipmentLogsBox.values) {
+      await _syncService.queueChange(
+        entityType: 'equipment_log',
+        operation: 'upsert',
+        payload: log.toJson(),
+      );
+    }
+
+    // Queue timer logs
+    for (final log in _timerLogsBox.values) {
+      await _syncService.queueChange(
+        entityType: 'timer_log',
+        operation: 'upsert',
+        payload: log.toJson(),
+      );
+    }
+
+    // Queue kabel/slange logs
+    for (final log in _kabelSlangeLogsBox.values) {
+      await _syncService.queueChange(
+        entityType: 'kabel_slange_log',
+        operation: 'upsert',
+        payload: log.toJson(),
+      );
+    }
+
+    // Queue messages
+    for (final message in _messagesBox.values) {
+      await _syncService.queueChange(
+        entityType: 'message',
+        operation: 'upsert',
+        payload: message.toJson(),
+      );
+    }
+
+    // Queue activity logs
+    for (final log in _activityLogsBox.values) {
+      await _syncService.queueChange(
+        entityType: 'activity_log',
+        operation: 'upsert',
+        payload: log.toJson(),
+      );
+    }
+
+    debugPrint('All data queued for sync');
   }
 
   // Generate unique ID

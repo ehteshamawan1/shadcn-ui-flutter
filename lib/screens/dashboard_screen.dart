@@ -439,7 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   TextButton.icon(
                                     icon: const Icon(Icons.add, size: 16),
                                     label: const Text('Ny sag'),
-                                    onPressed: () => Navigator.pushNamed(context, '/ny-sag'),
+                                    onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
                                   ),
                               ],
                             ),

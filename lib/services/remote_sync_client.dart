@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Callback type for real-time changes
+typedef RealtimeChangeCallback = void Function(String table, String eventType, Map<String, dynamic> data);
 
 /// Simple Supabase-backed client for pushing queued changes when online.
 /// It no-ops if Supabase is not configured (URL/key empty).
@@ -15,6 +19,8 @@ class RemoteSyncClient {
 
   SupabaseClient? _client;
   bool _schemaInitialized = false;
+  RealtimeChannel? _realtimeChannel;
+  final List<RealtimeChangeCallback> _changeCallbacks = [];
 
   bool get isConfigured => _client != null;
 
@@ -70,5 +76,113 @@ class RemoteSyncClient {
     } catch (e) {
       throw Exception('Supabase fetch fejl: $e');
     }
+  }
+
+  /// Add a callback for real-time changes
+  void addChangeCallback(RealtimeChangeCallback callback) {
+    _changeCallbacks.add(callback);
+  }
+
+  /// Remove a callback
+  void removeChangeCallback(RealtimeChangeCallback callback) {
+    _changeCallbacks.remove(callback);
+  }
+
+  /// Subscribe to real-time changes for all tables
+  Future<void> subscribeToRealtimeChanges() async {
+    if (!isConfigured || _client == null) {
+      debugPrint('RemoteSyncClient: Kan ikke abonnere - Supabase ikke konfigureret');
+      return;
+    }
+
+    // Unsubscribe from existing channel if any
+    await unsubscribeFromRealtimeChanges();
+
+    try {
+      // Create a channel for all database changes
+      _realtimeChannel = _client!.channel('db-changes');
+
+      // Subscribe to all relevant tables
+      final tables = [
+        'users',
+        'sager',
+        'affugtere',
+        'blokke',
+        'blok_completions',
+        'equipment_logs',
+        'timer_logs',
+        'kabel_slange_logs',
+        'messages',
+        'activity_logs',
+      ];
+
+      for (final table in tables) {
+        _realtimeChannel!.onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: table,
+          callback: (payload) {
+            _handleRealtimeChange(table, payload);
+          },
+        );
+      }
+
+      // Subscribe to the channel
+      _realtimeChannel!.subscribe((status, error) {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          debugPrint('RemoteSyncClient: Real-time abonnement aktivt');
+        } else if (status == RealtimeSubscribeStatus.closed) {
+          debugPrint('RemoteSyncClient: Real-time abonnement lukket');
+        } else if (error != null) {
+          debugPrint('RemoteSyncClient: Real-time fejl: $error');
+        }
+      });
+
+      debugPrint('RemoteSyncClient: Oprettet real-time abonnement for ${tables.length} tabeller');
+    } catch (e) {
+      debugPrint('RemoteSyncClient: Kunne ikke oprette real-time abonnement: $e');
+    }
+  }
+
+  /// Handle incoming real-time changes
+  void _handleRealtimeChange(String table, PostgresChangePayload payload) {
+    final eventType = payload.eventType.name; // INSERT, UPDATE, DELETE
+    final newData = payload.newRecord;
+    final oldData = payload.oldRecord;
+
+    debugPrint('RemoteSyncClient: Real-time ændring - $table/$eventType');
+
+    // Use new data for INSERT/UPDATE, old data for DELETE
+    final data = eventType == 'DELETE'
+        ? Map<String, dynamic>.from(oldData)
+        : Map<String, dynamic>.from(newData);
+
+    // Notify all callbacks
+    for (final callback in _changeCallbacks) {
+      try {
+        callback(table, eventType, data);
+      } catch (e) {
+        debugPrint('RemoteSyncClient: Callback fejl: $e');
+      }
+    }
+  }
+
+  /// Unsubscribe from real-time changes
+  Future<void> unsubscribeFromRealtimeChanges() async {
+    if (_realtimeChannel != null) {
+      try {
+        await _client?.removeChannel(_realtimeChannel!);
+        _realtimeChannel = null;
+        debugPrint('RemoteSyncClient: Real-time abonnement afmeldt');
+      } catch (e) {
+        debugPrint('RemoteSyncClient: Kunne ikke afmelde real-time: $e');
+      }
+    }
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    unsubscribeFromRealtimeChanges();
+    _changeCallbacks.clear();
   }
 }
