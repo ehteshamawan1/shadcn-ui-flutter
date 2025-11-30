@@ -120,13 +120,13 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
     final registeredGrossProfit = totalRegisteredRevenue - totalCosts;
     final registeredProfitMargin = totalRegisteredRevenue > 0
         ? (registeredGrossProfit / totalRegisteredRevenue) * 100
-        : 0;
+        : 0.0;
 
     // Billable percentage
-    final billablePercentage = totalHours > 0 ? (registeredBillableHours / totalHours) * 100 : 0;
+    final billablePercentage = totalHours > 0 ? (registeredBillableHours / totalHours) * 100 : 0.0;
     final avgHourlyRate = registeredBillableHours > 0
         ? registeredBillableRevenue / registeredBillableHours
-        : 0;
+        : 0.0;
 
     return RentabilitetData(
       registeredBillableHours: registeredBillableHours,

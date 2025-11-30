@@ -8,9 +8,11 @@ import '../models/equipment_log.dart';
 import '../models/sag_message.dart';
 import '../models/activity_log.dart';
 import '../providers/theme_provider.dart';
+import '../constants/roles_and_features.dart';
 import 'blok_administration_screen.dart';
 import 'kabler_slanger_screen.dart';
 import 'sag_udstyr_screen.dart';
+import 'rentabilitet_screen.dart';
 
 class SagDetaljerScreen extends StatefulWidget {
   final String sagId;
@@ -45,19 +47,30 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   String _activeTab = 'oversigt';
 
   List<Map<String, dynamic>> get _visibleTabs {
-    final user = _authService.currentUser;
-    if (user == null) return _tabItems;
-
-    final features = user.enabledFeatures ?? [];
+    // Map tab keys to feature keys
     bool canSee(String key) {
-      if (user.role == 'admin' || user.role == 'bogholder') return true;
-      if (key == 'rentabilitet') {
-        return features.contains('rentabilitet');
+      switch (key) {
+        case 'oversigt':
+          return true; // Always visible
+        case 'blokke':
+          return _authService.hasFeature(AppFeatures.blockManagement);
+        case 'udstyr':
+          return _authService.hasFeature(AppFeatures.equipmentManagement);
+        case 'kabler':
+          return _authService.hasFeature(AppFeatures.cableLogging);
+        case 'timer':
+          return _authService.hasFeature(AppFeatures.timeTracking);
+        case 'beskeder':
+          return _authService.hasFeature(AppFeatures.messages);
+        case 'aktivitet':
+          return _authService.hasFeature(AppFeatures.activityLog);
+        case 'rentabilitet':
+          return _authService.hasFeature(AppFeatures.profitability);
+        case 'faktura':
+          return _authService.hasFeature(AppFeatures.invoicing);
+        default:
+          return true;
       }
-      if (key == 'faktura') {
-        return features.contains('faktura');
-      }
-      return true;
     }
 
     return _tabItems.where((t) => canSee(t['key'] as String)).toList();
@@ -754,9 +767,10 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       case 'aktivitet':
         return _buildAktivitetslogTab();
       case 'rentabilitet':
-        return _buildPlaceholderTab(
-          'Rentabilitet',
-          'Se dækningsbidrag, timer og udstyr versus faktureret beløb.',
+        return RentabilitetScreen(
+          sagId: widget.sagId,
+          sagsnr: _sag?.sagsnr,
+          titel: _sag?.adresse,
         );
       case 'faktura':
         return _buildPlaceholderTab(
@@ -1369,106 +1383,244 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   Widget _buildBeskedTab() {
     final currentUser = _authService.currentUser;
     final messageController = TextEditingController();
+    final allUsers = _dbService.getAllUsers();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSection(
-          title: 'Beskeder',
+    // Filter messages visible to current user
+    final visibleMessages = currentUser != null
+        ? _messages.where((msg) => msg.isVisibleTo(currentUser.id)).toList()
+        : _messages;
+
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        // Local state for target user selection
+        String? selectedTargetUserId;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_messages.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Ingen beskeder endnu. Skriv den første besked til teamet.',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isOwn = currentUser != null && msg.userId == currentUser.id;
-                return Align(
-                  alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isOwn
-                          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                          : Theme.of(context).colorScheme.surfaceVariant,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                          isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          msg.userName,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(msg.text),
-                        const SizedBox(height: 4),
-                        Text(
-                          msg.timestamp.replaceFirst('T', ' ').split('.').first,
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            Row(
+            _buildSection(
+              title: 'Beskeder',
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Skriv en besked...',
-                      border: OutlineInputBorder(),
+                if (visibleMessages.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Ingen beskeder endnu. Skriv den første besked til teamet.',
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.send),
-                  label: const Text('Send'),
-                  onPressed: () {
-                    final text = messageController.text.trim();
-                    if (text.isEmpty) return;
-                    if (currentUser == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Ingen bruger logget ind')),
-                      );
-                      return;
-                    }
-                    final msg = SagMessage(
-                      id: _uuid.v4(),
-                      sagId: widget.sagId,
-                      userId: currentUser.id,
-                      userName: currentUser.name,
-                      text: text,
-                      timestamp: DateTime.now().toIso8601String(),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: visibleMessages.length,
+                  itemBuilder: (context, index) {
+                    final msg = visibleMessages[index];
+                    final isOwn = currentUser != null && msg.userId == currentUser.id;
+                    return Align(
+                      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isOwn
+                              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                              : Theme.of(context).colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment:
+                              isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  msg.userName,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                // Show target indicator if message is targeted
+                                if (msg.isTargeted) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.person, size: 12, color: Colors.blue),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Til: ${msg.targetDisplayName}',
+                                          style: const TextStyle(fontSize: 10, color: Colors.blue),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(msg.text),
+                            const SizedBox(height: 4),
+                            Text(
+                              msg.timestamp.replaceFirst('T', ' ').split('.').first,
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
-                    _dbService.addMessage(msg);
-                    setState(() {
-                      _messages = _dbService.getMessagesBySag(widget.sagId);
-                      _activityLogs = _dbService.getActivityLogsBySag(widget.sagId);
-                    });
-                    messageController.clear();
                   },
+                ),
+                const SizedBox(height: 12),
+                // Target employee selector
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Send til:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String?>(
+                        value: selectedTargetUserId,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Row(
+                              children: [
+                                Icon(Icons.groups, size: 18),
+                                SizedBox(width: 8),
+                                Text('Alle medarbejdere'),
+                              ],
+                            ),
+                          ),
+                          ...allUsers.map((user) => DropdownMenuItem<String?>(
+                                value: user.id,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.person, size: 18),
+                                    SizedBox(width: 8),
+                                    Text(user.name),
+                                    if (user.role == 'admin')
+                                      Container(
+                                        margin: const EdgeInsets.only(left: 8),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'Admin',
+                                          style: TextStyle(fontSize: 10, color: Colors.red),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              )),
+                        ],
+                        onChanged: (value) {
+                          setLocalState(() {
+                            selectedTargetUserId = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: messageController,
+                              decoration: const InputDecoration(
+                                hintText: 'Skriv en besked...',
+                                border: OutlineInputBorder(),
+                              ),
+                              maxLines: 2,
+                              minLines: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.send),
+                            label: const Text('Send'),
+                            onPressed: () {
+                              final text = messageController.text.trim();
+                              if (text.isEmpty) return;
+                              if (currentUser == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Ingen bruger logget ind')),
+                                );
+                                return;
+                              }
+
+                              // Find target user name if selected
+                              String? targetUserName;
+                              if (selectedTargetUserId != null) {
+                                final targetUser = allUsers.firstWhere(
+                                  (u) => u.id == selectedTargetUserId,
+                                  orElse: () => currentUser,
+                                );
+                                targetUserName = targetUser.name;
+                              }
+
+                              final msg = SagMessage(
+                                id: _uuid.v4(),
+                                sagId: widget.sagId,
+                                userId: currentUser.id,
+                                userName: currentUser.name,
+                                text: text,
+                                timestamp: DateTime.now().toIso8601String(),
+                                targetUserId: selectedTargetUserId,
+                                targetUserName: targetUserName,
+                              );
+                              _dbService.addMessage(msg);
+                              setState(() {
+                                _messages = _dbService.getMessagesBySag(widget.sagId);
+                                _activityLogs = _dbService.getActivityLogsBySag(widget.sagId);
+                              });
+                              messageController.clear();
+
+                              // Show confirmation
+                              final targetDisplay = selectedTargetUserId == null
+                                  ? 'alle medarbejdere'
+                                  : targetUserName ?? 'valgt medarbejder';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Besked sendt til $targetDisplay'),
+                                  backgroundColor: Colors.green,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 

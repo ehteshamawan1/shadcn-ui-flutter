@@ -60,7 +60,7 @@ class BlokCompletion extends HiveObject {
         'previousAmount': previousAmount,
         'newAmount': newAmount,
         'amountCompleted': amountCompleted,
-        'user': user,
+        'userId': user,
         'note': note,
         'createdAt': createdAt,
       };
@@ -74,7 +74,7 @@ class BlokCompletion extends HiveObject {
         previousAmount: (json['previousAmount'] as num).toDouble(),
         newAmount: (json['newAmount'] as num).toDouble(),
         amountCompleted: (json['amountCompleted'] as num).toDouble(),
-        user: json['user'] as String,
+        user: (json['userId'] ?? json['user']) as String,
         note: json['note'] as String?,
         createdAt: json['createdAt'] as String,
       );

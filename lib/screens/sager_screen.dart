@@ -198,11 +198,11 @@ class _SagerScreenState extends State<SagerScreen> {
       return;
     }
 
-    // TODO: Implement Economic API integration
+    // Economic API integration is Phase 3 (Task 3.2)
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Economic-eksport kommer snart'),
+          content: Text('Economic-eksport kommer i næste version'),
           backgroundColor: Colors.blue,
         ),
       );

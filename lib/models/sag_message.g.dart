@@ -23,13 +23,15 @@ class SagMessageAdapter extends TypeAdapter<SagMessage> {
       userName: fields[3] as String,
       text: fields[4] as String,
       timestamp: fields[5] as String,
+      targetUserId: fields[6] as String?,
+      targetUserName: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SagMessage obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +43,11 @@ class SagMessageAdapter extends TypeAdapter<SagMessage> {
       ..writeByte(4)
       ..write(obj.text)
       ..writeByte(5)
-      ..write(obj.timestamp);
+      ..write(obj.timestamp)
+      ..writeByte(6)
+      ..write(obj.targetUserId)
+      ..writeByte(7)
+      ..write(obj.targetUserName);
   }
 
   @override

@@ -16,18 +16,13 @@ class UserAdapter extends TypeAdapter<User> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    final rawFeatures = fields[4];
-    final features = rawFeatures is List ? rawFeatures.cast<String>() : null;
-    final createdAt = fields[5] is String
-        ? fields[5] as String
-        : (fields[4] is String ? fields[4] as String : '');
     return User(
       id: fields[0] as String,
       name: fields[1] as String,
       pin: fields[2] as String,
       role: fields[3] as String,
-      enabledFeatures: features,
-      createdAt: createdAt,
+      enabledFeatures: (fields[4] as List?)?.cast<String>(),
+      createdAt: fields[5] as String,
     );
   }
 

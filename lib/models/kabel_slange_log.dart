@@ -67,7 +67,7 @@ class KabelSlangeLog extends HiveObject {
         'pricePerMeter': pricePerMeter,
         'totalPrice': totalPrice,
         'note': note,
-        'user': user,
+        'userId': user,
         'timestamp': timestamp,
       };
 
@@ -82,7 +82,7 @@ class KabelSlangeLog extends HiveObject {
         pricePerMeter: (json['pricePerMeter'] as num?)?.toDouble(),
         totalPrice: (json['totalPrice'] as num?)?.toDouble(),
         note: json['note'] as String?,
-        user: json['user'] as String?,
+        user: (json['userId'] ?? json['user']) as String?,
         timestamp: json['timestamp'] as String,
       );
 }

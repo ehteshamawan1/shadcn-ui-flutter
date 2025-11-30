@@ -200,9 +200,9 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
   }
 
   void _exportToCsv() {
-    // TODO: Implement CSV export
+    // CSV export is a Phase 3 enhancement - placeholder for now
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('CSV eksport kommer snart...')),
+      const SnackBar(content: Text('CSV eksport kommer i næste version')),
     );
   }
 
@@ -241,9 +241,8 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
 
                 // Results header
                 FilterResultsHeader(
-                  total: _allLogs.length,
-                  filtered: _filteredLogs.length,
-                  label: 'aktiviteter',
+                  resultCount: _filteredLogs.length,
+                  itemLabel: 'aktiviteter',
                 ),
                 const SizedBox(height: 8),
 
@@ -297,7 +296,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
         ),
       ],
       selectedValue: _selectedEntityType == 'alle' ? (_selectedPeriod == 'today' ? 'today' : 'alle') : _selectedEntityType,
-      onSelected: (value) {
+      onChanged: (value) {
         setState(() {
           if (value == 'today') {
             _selectedPeriod = 'today';

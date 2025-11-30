@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../providers/theme_provider.dart';
+import '../constants/roles_and_features.dart';
 import 'dropdown_settings_screen.dart';
 import 'admin_settings_screen.dart';
 import 'activity_log_screen.dart';
@@ -268,8 +269,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isAdmin = _authService.hasPermission('view_profit');
     final pendingChanges = _syncService.pendingChangesCount;
+
+    // Access control checks
+    final canBackup = _authService.hasFeature(AppFeatures.backup);
+    final canManageUsers = _authService.hasFeature(AppFeatures.userManagement);
+    final canManageDropdowns = _authService.hasFeature(AppFeatures.dropdownSettings);
+    final canViewActivityLog = _authService.hasFeature(AppFeatures.activityLog);
+    final hasAnyAdminAccess = canManageUsers || canManageDropdowns || _authService.isAdmin;
 
     return Scaffold(
       appBar: AppBar(
@@ -281,26 +288,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Sync Status Section
+            // Sync Status Section (always visible)
             _buildSyncStatusSection(theme, pendingChanges),
             const SizedBox(height: 16),
 
-            // Data Overview section
+            // Data Overview section (always visible)
             _buildDataOverviewSection(theme),
             const SizedBox(height: 16),
 
-            // Backup & Restore section
-            _buildBackupSection(theme),
-            const SizedBox(height: 16),
-
-            // Administration section (Admin only)
-            if (isAdmin) ...[
-              _buildAdministrationSection(theme),
+            // Backup & Restore section (permission-based)
+            if (canBackup) ...[
+              _buildBackupSection(theme),
               const SizedBox(height: 16),
             ],
 
-            // Activity Log section
-            _buildActivityLogSection(theme),
+            // Administration section (permission-based)
+            if (hasAnyAdminAccess) ...[
+              _buildAdministrationSection(theme, canManageUsers, canManageDropdowns),
+              const SizedBox(height: 16),
+            ],
+
+            // Activity Log section (permission-based)
+            if (canViewActivityLog) _buildActivityLogSection(theme),
           ],
         ),
       ),
@@ -598,7 +607,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildAdministrationSection(ThemeData theme) {
+  Widget _buildAdministrationSection(ThemeData theme, bool canManageUsers, bool canManageDropdowns) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -614,68 +623,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Divider(height: 24),
 
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+            if (canManageUsers) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.people, color: Colors.purple),
                 ),
-                child: const Icon(Icons.people, color: Colors.purple),
+                title: const Text('Brugeradministration'),
+                subtitle: Text('${_backupStats?.users ?? 0} brugere'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UserManagementScreen()),
+                  ).then((_) => _loadBackupStats());
+                },
               ),
-              title: const Text('Brugeradministration'),
-              subtitle: Text('${_backupStats?.users ?? 0} brugere'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const UserManagementScreen()),
-                ).then((_) => _loadBackupStats());
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+              const Divider(height: 1),
+            ],
+            if (_authService.isAdmin) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.key, color: Colors.blue),
                 ),
-                child: const Icon(Icons.key, color: Colors.blue),
+                title: const Text('e-conomic API'),
+                subtitle: const Text('Konfigurer e-conomic integration'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminSettingsScreen()),
+                  );
+                },
               ),
-              title: const Text('e-conomic API'),
-              subtitle: const Text('Konfigurer e-conomic integration'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AdminSettingsScreen()),
-                );
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+              const Divider(height: 1),
+            ],
+            if (canManageDropdowns)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.list_alt, color: Colors.green),
                 ),
-                child: const Icon(Icons.list_alt, color: Colors.green),
+                title: const Text('Dropdown Indstillinger'),
+                subtitle: const Text('Administrer valgmuligheder i dropdown menuer'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DropdownSettingsScreen()),
+                  );
+                },
               ),
-              title: const Text('Dropdown Indstillinger'),
-              subtitle: const Text('Administrer valgmuligheder i dropdown menuer'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DropdownSettingsScreen()),
-                );
-              },
-            ),
           ],
         ),
       ),

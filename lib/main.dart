@@ -179,19 +179,19 @@ class SkaDanApp extends StatelessWidget {
         }
 
         if (settings.name != null && settings.name!.startsWith('/timer/')) {
-          // final sagId = settings.name!.split('/').last;
+          final sagId = settings.name!.split('/').last;
           return MaterialPageRoute(
             builder: (_) => isLoggedIn
-                ? const Placeholder() // TODO: Create TimerRegistreringScreen(sagId: sagId)
+                ? TimerRegistreringScreen(sagId: sagId)
                 : const LoginScreen(),
           );
         }
 
         if (settings.name != null && settings.name!.startsWith('/nfc-scanner/')) {
-          // final sagId = settings.name!.split('/').last;
+          final sagId = settings.name!.split('/').last;
           return MaterialPageRoute(
             builder: (_) => isLoggedIn
-                ? const Placeholder() // TODO: Create NFCScannerScreen(sagId: sagId)
+                ? NFCScannerScreen(sagId: sagId)
                 : const LoginScreen(),
           );
         }

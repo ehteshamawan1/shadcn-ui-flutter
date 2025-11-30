@@ -51,7 +51,7 @@ class EquipmentLog extends HiveObject {
         'action': action,
         'data': data,
         'timestamp': timestamp,
-        'user': user,
+        'userId': user,
         'note': note,
       };
 
@@ -63,7 +63,7 @@ class EquipmentLog extends HiveObject {
         action: json['action'] as String,
         data: Map<String, dynamic>.from(json['data'] as Map),
         timestamp: json['timestamp'] as String,
-        user: json['user'] as String,
+        user: (json['userId'] ?? json['user']) as String,
         note: json['note'] as String?,
       );
 }

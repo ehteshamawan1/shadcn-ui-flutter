@@ -7,6 +7,8 @@ import '../providers/theme_provider.dart';
 import '../models/user.dart';
 import '../models/sag.dart';
 import '../models/affugter.dart';
+import '../constants/roles_and_features.dart';
+import '../widgets/access_controlled_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -180,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const PopupMenuDivider(),
-              if (_authService.currentUser?.role == 'admin') ...[
+              if (_authService.hasFeature(AppFeatures.userManagement))
                 const PopupMenuItem(
                   value: 'users',
                   child: Row(
@@ -191,6 +193,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+              if (_authService.hasFeature(AppFeatures.settings))
                 const PopupMenuItem(
                   value: 'settings',
                   child: Row(
@@ -201,6 +204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+              if (_authService.isAdmin)
                 const PopupMenuItem(
                   value: 'role-permissions',
                   child: Row(
@@ -211,8 +215,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+              if (_authService.hasFeature(AppFeatures.userManagement) ||
+                  _authService.hasFeature(AppFeatures.settings) ||
+                  _authService.isAdmin)
                 const PopupMenuDivider(),
-              ],
               PopupMenuItem(
                 value: 'theme',
                 child: Row(
@@ -332,30 +338,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 20),
 
-                          // Primary Functions - full width
+                          // Primary Functions - full width (filtered by access)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _buildActionButton(
-                                title: 'Sager',
-                                subtitle: 'Se og opret sager',
-                                icon: Icons.description,
-                                onTap: () => Navigator.pushNamed(context, '/sager'),
-                                isPrimary: true,
+                              AccessControlledWidget(
+                                featureKey: AppFeatures.viewCases,
+                                child: _buildActionButton(
+                                  title: 'Sager',
+                                  subtitle: 'Se og opret sager',
+                                  icon: Icons.description,
+                                  onTap: () => Navigator.pushNamed(context, '/sager'),
+                                  isPrimary: true,
+                                ),
                               ),
-                              const SizedBox(height: 12),
-                              _buildActionButton(
-                                title: 'NFC Scanner',
-                                subtitle: 'Scan affugtere',
-                                icon: Icons.nfc,
-                                onTap: () => Navigator.pushNamed(context, '/nfc-scanner'),
+                              AccessControlledWidget(
+                                featureKey: AppFeatures.nfcScanning,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: _buildActionButton(
+                                    title: 'NFC Scanner',
+                                    subtitle: 'Scan affugtere',
+                                    icon: Icons.nfc,
+                                    onTap: () => Navigator.pushNamed(context, '/nfc-scanner'),
+                                  ),
+                                ),
                               ),
-                              const SizedBox(height: 12),
-                              _buildActionButton(
-                                title: 'Udstyr Oversigt',
-                                subtitle: 'Affugtere og udstyr med NFC',
-                                icon: Icons.air,
-                                onTap: () => Navigator.pushNamed(context, '/affugtere'),
+                              AccessControlledWidget(
+                                featureKey: AppFeatures.equipmentManagement,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: _buildActionButton(
+                                    title: 'Udstyr Oversigt',
+                                    subtitle: 'Affugtere og udstyr med NFC',
+                                    icon: Icons.air,
+                                    onTap: () => Navigator.pushNamed(context, '/affugtere'),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -367,113 +386,136 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Quick Stats - responsive grid
-                  GridView.count(
-                    crossAxisCount: statColumns,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    shrinkWrap: true,
-                    childAspectRatio: isNarrow ? 1.5 : 1.3,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildStatCard(
-                        label: 'Aktive sager',
-                        value: '${_aktiveSager.length}',
-                        icon: Icons.description,
-                        color: AppColors.primary,
-                        onTap: () => Navigator.pushNamed(context, '/sager'),
-                      ),
-                      _buildStatCard(
-                        label: 'Affugtere hjemme',
-                        value: '${stats['hjemme']}',
-                        icon: Icons.home,
-                        color: Colors.green,
-                        onTap: () => Navigator.pushNamed(context, '/affugtere'),
-                      ),
-                      _buildStatCard(
-                        label: 'Udlejet',
-                        value: '${stats['udlejet']}',
-                        icon: Icons.inventory_2,
-                        color: Colors.orange,
-                        onTap: () => Navigator.pushNamed(context, '/affugtere'),
-                      ),
-                      _buildStatCard(
-                        label: 'Defekt',
-                        value: '${stats['defekt']}',
-                        icon: Icons.warning,
-                        color: Colors.red,
-                        onTap: () => Navigator.pushNamed(context, '/affugtere'),
-                      ),
-                    ],
+                  // Quick Stats - responsive grid (filtered by access)
+                  Builder(
+                    builder: (context) {
+                      final statCards = <Widget>[];
+
+                      if (_authService.hasFeature(AppFeatures.viewCases)) {
+                        statCards.add(_buildStatCard(
+                          label: 'Aktive sager',
+                          value: '${_aktiveSager.length}',
+                          icon: Icons.description,
+                          color: AppColors.primary,
+                          onTap: () => Navigator.pushNamed(context, '/sager'),
+                        ));
+                      }
+
+                      if (_authService.hasFeature(AppFeatures.equipmentManagement)) {
+                        statCards.addAll([
+                          _buildStatCard(
+                            label: 'Affugtere hjemme',
+                            value: '${stats['hjemme']}',
+                            icon: Icons.home,
+                            color: Colors.green,
+                            onTap: () => Navigator.pushNamed(context, '/affugtere'),
+                          ),
+                          _buildStatCard(
+                            label: 'Udlejet',
+                            value: '${stats['udlejet']}',
+                            icon: Icons.inventory_2,
+                            color: Colors.orange,
+                            onTap: () => Navigator.pushNamed(context, '/affugtere'),
+                          ),
+                          _buildStatCard(
+                            label: 'Defekt',
+                            value: '${stats['defekt']}',
+                            icon: Icons.warning,
+                            color: Colors.red,
+                            onTap: () => Navigator.pushNamed(context, '/affugtere'),
+                          ),
+                        ]);
+                      }
+
+                      if (statCards.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final effectiveColumns = statCards.length < statColumns ? statCards.length : statColumns;
+
+                      return GridView.count(
+                        crossAxisCount: effectiveColumns,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        shrinkWrap: true,
+                        childAspectRatio: isNarrow ? 1.5 : 1.3,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: statCards,
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Recent Cases
-                  if (_aktiveSager.isNotEmpty) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Seneste sager',
-                                      style: Theme.of(context).textTheme.titleLarge,
-                                    ),
-                                    Text(
-                                      'Aktive sager - klik for detaljer eller hurtige handlinger',
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Colors.grey[600],
+                  // Recent Cases (only shown if user has viewCases permission)
+                  if (_authService.hasFeature(AppFeatures.viewCases)) ...[
+                    if (_aktiveSager.isNotEmpty) ...[
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Seneste sager',
+                                        style: Theme.of(context).textTheme.titleLarge,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                if (_authService.currentUser?.role == 'admin')
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.add, size: 16),
-                                    label: const Text('Ny sag'),
-                                    onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                                      Text(
+                                        'Aktive sager - klik for detaljer eller hurtige handlinger',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            ..._aktiveSager.take(5).map((sag) => _buildSagItem(sag)),
-                            if (_aktiveSager.length > 5)
-                              TextButton(
-                                onPressed: () => Navigator.pushNamed(context, '/sager'),
-                                child: Text('Se alle sager (${_aktiveSager.length})'),
+                                  AccessControlledWidget(
+                                    featureKey: AppFeatures.createCases,
+                                    child: TextButton.icon(
+                                      icon: const Icon(Icons.add, size: 16),
+                                      label: const Text('Ny sag'),
+                                      onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                                    ),
+                                  ),
+                                ],
                               ),
-                          ],
+                              const SizedBox(height: 16),
+                              ..._aktiveSager.take(5).map((sag) => _buildSagItem(sag)),
+                              if (_aktiveSager.length > 5)
+                                TextButton(
+                                  onPressed: () => Navigator.pushNamed(context, '/sager'),
+                                  child: Text('Se alle sager (${_aktiveSager.length})'),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ] else ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.description,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Ingen aktive sager',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ],
+                    ] else ...[
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.description,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Ingen aktive sager',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ],
               ),
@@ -663,16 +705,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.nfc, size: 18, color: AppColors.primary),
-              onPressed: () => Navigator.pushNamed(context, '/nfc-scanner'),
-              tooltip: 'NFC',
-            ),
-            IconButton(
-              icon: const Icon(Icons.timer, size: 18, color: Colors.green),
-              onPressed: () => Navigator.pushNamed(context, '/timer'),
-              tooltip: 'Timer',
-            ),
+            if (_authService.hasFeature(AppFeatures.nfcScanning))
+              IconButton(
+                icon: const Icon(Icons.nfc, size: 18, color: AppColors.primary),
+                onPressed: () => Navigator.pushNamed(context, '/nfc-scanner'),
+                tooltip: 'NFC',
+              ),
+            if (_authService.hasFeature(AppFeatures.timeTracking))
+              IconButton(
+                icon: const Icon(Icons.timer, size: 18, color: Colors.green),
+                onPressed: () => Navigator.pushNamed(context, '/timer'),
+                tooltip: 'Timer',
+              ),
           ],
         ),
       ),
