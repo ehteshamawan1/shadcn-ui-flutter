@@ -146,6 +146,7 @@ class DatabaseService {
     await Hive.openBox<SyncTask>(syncQueueBox);
     await Hive.openBox<SagMessage>(messagesBox);
     await Hive.openBox<ActivityLog>(activityLogsBox);
+    await Hive.openBox<AppSetting>(appSettingsBox);
   }
 
   Future<void> _clearAllBoxes() async {

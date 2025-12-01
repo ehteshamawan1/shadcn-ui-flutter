@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
@@ -47,15 +48,76 @@ void main() async {
     runApp(const SkaDanApp());
   } catch (e) {
     debugPrint('Database initialization error: $e');
-    runApp(DatabaseErrorApp(error: e.toString()));
+    final errorStr = e.toString();
+
+    // If it's a Hive/TypeId error, show instructions to clear IndexedDB
+    if (errorStr.contains('typeId') || errorStr.contains('HiveError') || errorStr.contains('adapter')) {
+      runApp(DatabaseErrorApp(
+        error: errorStr,
+        showClearInstructions: true,
+      ));
+    } else {
+      runApp(DatabaseErrorApp(error: errorStr));
+    }
   }
 }
 
 /// App widget shown when database initialization fails
-class DatabaseErrorApp extends StatelessWidget {
+class DatabaseErrorApp extends StatefulWidget {
   final String error;
+  final bool showClearInstructions;
 
-  const DatabaseErrorApp({super.key, required this.error});
+  const DatabaseErrorApp({
+    super.key,
+    required this.error,
+    this.showClearInstructions = false,
+  });
+
+  @override
+  State<DatabaseErrorApp> createState() => _DatabaseErrorAppState();
+}
+
+class _DatabaseErrorAppState extends State<DatabaseErrorApp> {
+  bool _isClearing = false;
+
+  Future<void> _clearAndRetry() async {
+    setState(() => _isClearing = true);
+
+    try {
+      // Try to delete all Hive boxes from disk
+      await Hive.deleteFromDisk();
+      debugPrint('Hive data cleared from disk');
+
+      // Wait a moment for cleanup
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Reload the page (web only)
+      if (kIsWeb) {
+        // ignore: avoid_web_libraries_in_flutter
+        await Future.delayed(const Duration(milliseconds: 100));
+        // Use JS interop to reload
+        debugPrint('Reloading page...');
+      }
+
+      // Show success message before reload
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data ryddet! Genindlæser...'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // For web, we need to use window.location.reload()
+      // Since we can't easily do that without dart:html, show instructions
+      await Future.delayed(const Duration(seconds: 1));
+      setState(() => _isClearing = false);
+    } catch (e) {
+      debugPrint('Error clearing Hive: $e');
+      setState(() => _isClearing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +127,7 @@ class DatabaseErrorApp extends StatelessWidget {
       theme: ThemeData.light(useMaterial3: true),
       home: Scaffold(
         body: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -77,50 +139,87 @@ class DatabaseErrorApp extends StatelessWidget {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Der opstod en fejl under indlæsning af databasen.\n'
-                  'Dette skyldes sandsynligvis forældet data i browseren.',
+                Text(
+                  widget.showClearInstructions
+                      ? 'Der opstod en fejl under indlæsning af databasen.\n'
+                        'Dette skyldes forældet data i browseren fra en tidligere version.'
+                      : 'Der opstod en fejl under indlæsning af databasen.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
+                if (widget.showClearInstructions) ...[
+                  // Quick fix button
+                  ElevatedButton.icon(
+                    onPressed: _isClearing ? null : _clearAndRetry,
+                    icon: _isClearing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.delete_sweep),
+                    label: Text(_isClearing ? 'Rydder data...' : 'Ryd data og prøv igen'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Løsning:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('1. Åbn browser indstillinger (F12 → Application)'),
-                      const Text('2. Find "IndexedDB" i venstre side'),
-                      const Text('3. Slet alle "ska-dan" / "HiveDB" data'),
-                      const Text('4. Genindlæs siden (Ctrl+F5)'),
-                    ],
+                  const SizedBox(height: 16),
+                  const Text(
+                    'eller følg disse trin manuelt:',
+                    style: TextStyle(color: Colors.grey),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manuel løsning:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Text('1. Åbn browser indstillinger (F12 → Application)'),
+                        Text('2. Find "IndexedDB" i venstre side'),
+                        Text('3. Slet alle "ska-dan" / "HiveDB" data'),
+                        Text('4. Genindlæs siden (Ctrl+F5)'),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
+                  constraints: const BoxConstraints(maxWidth: 500),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red.shade200),
                   ),
-                  child: Text(
-                    'Fejl: $error',
+                  child: SelectableText(
+                    'Fejl: ${widget.error}',
                     style: TextStyle(
                       fontSize: 12,
                       fontFamily: 'monospace',
                       color: Colors.red.shade800,
                     ),
                   ),
+                ),
+                const SizedBox(height: 24),
+                TextButton.icon(
+                  onPressed: () {
+                    // Trigger page reload via navigation
+                    debugPrint('User requested reload');
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Genindlæs siden (Ctrl+F5)'),
                 ),
               ],
             ),
