@@ -247,10 +247,11 @@ class _DropdownFilter extends StatelessWidget {
           ]
         : options;
 
-    return SizedBox(
-      width: 180,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 140, maxWidth: 200),
       child: DropdownButtonFormField<String>(
         value: value ?? 'alle',
+        isExpanded: true,
         decoration: InputDecoration(
           labelText: config.label,
           isDense: true,
@@ -261,24 +262,24 @@ class _DropdownFilter extends StatelessWidget {
           final countText = config.showCount && opt.count != null ? ' (${opt.count})' : '';
           return DropdownMenuItem(
             value: opt.value,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (opt.icon != null) ...[
-                  Icon(opt.icon, size: 16, color: opt.color),
-                  const SizedBox(width: 8),
-                ],
-                Flexible(
-                  child: Text(
-                    '${opt.label}$countText',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            child: Text(
+              '${opt.label}$countText',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           );
         }).toList(),
         onChanged: onChanged,
+        selectedItemBuilder: (context) {
+          return allOptions.map((opt) {
+            final countText = config.showCount && opt.count != null ? ' (${opt.count})' : '';
+            return Text(
+              '${opt.label}$countText',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            );
+          }).toList();
+        },
       ),
     );
   }

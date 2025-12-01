@@ -35,15 +35,100 @@ void main() async {
   }
 
   // Initialize database service (which handles Hive initialization)
-  await DatabaseService().init();
+  try {
+    await DatabaseService().init();
 
-  // Initialize sync service (queues offline changes and syncs when online)
-  await SyncService().init();
+    // Initialize sync service (queues offline changes and syncs when online)
+    await SyncService().init();
 
-  // Note: Session is NOT restored on startup - user must always login with PIN
-  // await AuthService().restoreSession();
+    // Note: Session is NOT restored on startup - user must always login with PIN
+    // await AuthService().restoreSession();
 
-  runApp(const SkaDanApp());
+    runApp(const SkaDanApp());
+  } catch (e) {
+    debugPrint('Database initialization error: $e');
+    runApp(DatabaseErrorApp(error: e.toString()));
+  }
+}
+
+/// App widget shown when database initialization fails
+class DatabaseErrorApp extends StatelessWidget {
+  final String error;
+
+  const DatabaseErrorApp({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'SKA-DAN - Fejl',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(useMaterial3: true),
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 24),
+                const Text(
+                  'Database Fejl',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Der opstod en fejl under indlæsning af databasen.\n'
+                  'Dette skyldes sandsynligvis forældet data i browseren.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Løsning:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('1. Åbn browser indstillinger (F12 → Application)'),
+                      const Text('2. Find "IndexedDB" i venstre side'),
+                      const Text('3. Slet alle "ska-dan" / "HiveDB" data'),
+                      const Text('4. Genindlæs siden (Ctrl+F5)'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Text(
+                    'Fejl: $error',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                      color: Colors.red.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class SkaDanApp extends StatelessWidget {

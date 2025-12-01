@@ -36,6 +36,7 @@ class DatabaseService {
   static const String syncQueueBox = 'sync_queue';
   static const String messagesBox = 'messages';
   static const String activityLogsBox = 'activity_logs';
+  static const String appSettingsBox = 'app_settings';
 
   final _uuid = const Uuid();
   final SyncService _syncService = SyncService();
@@ -44,6 +45,7 @@ class DatabaseService {
     await Hive.initFlutter();
 
     // Register adapters (guard against duplicate registration for hot restarts)
+    // TypeIds: 0-11 are registered
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(UserAdapter());
     }
@@ -68,11 +70,11 @@ class DatabaseService {
     if (!Hive.isAdapterRegistered(7)) {
       Hive.registerAdapter(SyncTaskAdapter());
     }
-    if (!Hive.isAdapterRegistered(9)) {
-      Hive.registerAdapter(SagMessageAdapter());
-    }
     if (!Hive.isAdapterRegistered(8)) {
       Hive.registerAdapter(KabelSlangeLogAdapter());
+    }
+    if (!Hive.isAdapterRegistered(9)) {
+      Hive.registerAdapter(SagMessageAdapter());
     }
     if (!Hive.isAdapterRegistered(10)) {
       Hive.registerAdapter(ActivityLogAdapter());
@@ -81,55 +83,69 @@ class DatabaseService {
       Hive.registerAdapter(AppSettingAdapter());
     }
 
-    try {
-      // Open boxes
-      await Hive.openBox<User>(usersBox);
-      await Hive.openBox<Sag>(sagerBox);
-      await Hive.openBox<Affugter>(affugtereBox);
-      await Hive.openBox<EquipmentLog>(equipmentLogsBox);
-      await Hive.openBox<TimerLog>(timerLogsBox);
-      await Hive.openBox<Blok>(blokkeBox);
-      await Hive.openBox<BlokCompletion>(blokCompletionsBox);
-      await Hive.openBox<KabelSlangeLog>(kabelSlangeLogsBox);
-      await Hive.openBox(equipmentRegistryBox);
-      await Hive.openBox(pricingConfigsBox);
-      await Hive.openBox(kostpriserBox);
-      await Hive.openBox(faktureringBox);
-      await Hive.openBox<SyncTask>(syncQueueBox);
-      await Hive.openBox<SagMessage>(messagesBox);
-      await Hive.openBox<ActivityLog>(activityLogsBox);
-    } catch (e) {
-      // If we get a HiveError with unknown typeId, clear all boxes and retry
-      if (e.toString().contains('unknown typeId') || e.toString().contains('HiveError')) {
-        debugPrint('Hive database incompatibility detected. Clearing database...');
-        await _clearAllBoxes();
-
-        // Retry opening boxes after clearing
-        await Hive.openBox<User>(usersBox);
-        await Hive.openBox<Sag>(sagerBox);
-        await Hive.openBox<Affugter>(affugtereBox);
-        await Hive.openBox<EquipmentLog>(equipmentLogsBox);
-        await Hive.openBox<TimerLog>(timerLogsBox);
-        await Hive.openBox<Blok>(blokkeBox);
-        await Hive.openBox<BlokCompletion>(blokCompletionsBox);
-        await Hive.openBox<KabelSlangeLog>(kabelSlangeLogsBox);
-        await Hive.openBox(equipmentRegistryBox);
-        await Hive.openBox(pricingConfigsBox);
-        await Hive.openBox(kostpriserBox);
-        await Hive.openBox(faktureringBox);
-        await Hive.openBox<SyncTask>(syncQueueBox);
-        await Hive.openBox<SagMessage>(messagesBox);
-        await Hive.openBox<ActivityLog>(activityLogsBox);
-      } else {
-        rethrow;
-      }
-    }
+    // Try to open boxes, with automatic recovery from corrupted data
+    await _openBoxesWithRecovery();
 
     // Initialize sample data if needed
     await initSampleData();
 
     // Initialize settings service
     await SettingsService().init();
+  }
+
+  /// Open all Hive boxes with automatic recovery from corrupted/incompatible data
+  Future<void> _openBoxesWithRecovery() async {
+    try {
+      await _openAllBoxes();
+    } catch (e) {
+      final errorStr = e.toString();
+      // Handle corrupted data, unknown typeId, or other Hive errors
+      if (errorStr.contains('unknown typeId') ||
+          errorStr.contains('HiveError') ||
+          errorStr.contains('type') ||
+          errorStr.contains('adapter')) {
+        debugPrint('=== HIVE DATABASE RECOVERY ===');
+        debugPrint('Error detected: $errorStr');
+        debugPrint('Clearing all boxes and recreating database...');
+
+        // Clear all boxes from disk
+        await _clearAllBoxes();
+
+        // Wait a bit for cleanup to complete
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Retry opening boxes
+        try {
+          await _openAllBoxes();
+          debugPrint('Database recovery successful!');
+        } catch (retryError) {
+          debugPrint('Database recovery failed: $retryError');
+          debugPrint('User should clear browser data (IndexedDB) manually');
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  /// Open all Hive boxes
+  Future<void> _openAllBoxes() async {
+    await Hive.openBox<User>(usersBox);
+    await Hive.openBox<Sag>(sagerBox);
+    await Hive.openBox<Affugter>(affugtereBox);
+    await Hive.openBox<EquipmentLog>(equipmentLogsBox);
+    await Hive.openBox<TimerLog>(timerLogsBox);
+    await Hive.openBox<Blok>(blokkeBox);
+    await Hive.openBox<BlokCompletion>(blokCompletionsBox);
+    await Hive.openBox<KabelSlangeLog>(kabelSlangeLogsBox);
+    await Hive.openBox(equipmentRegistryBox);
+    await Hive.openBox(pricingConfigsBox);
+    await Hive.openBox(kostpriserBox);
+    await Hive.openBox(faktureringBox);
+    await Hive.openBox<SyncTask>(syncQueueBox);
+    await Hive.openBox<SagMessage>(messagesBox);
+    await Hive.openBox<ActivityLog>(activityLogsBox);
   }
 
   Future<void> _clearAllBoxes() async {
@@ -149,6 +165,7 @@ class DatabaseService {
       await Hive.deleteBoxFromDisk(syncQueueBox);
       await Hive.deleteBoxFromDisk(messagesBox);
       await Hive.deleteBoxFromDisk(activityLogsBox);
+      await Hive.deleteBoxFromDisk(appSettingsBox);
       debugPrint('All Hive boxes cleared successfully');
     } catch (e) {
       debugPrint('Error clearing boxes: $e');

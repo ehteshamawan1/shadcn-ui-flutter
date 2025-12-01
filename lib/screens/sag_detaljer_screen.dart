@@ -725,28 +725,28 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       child: Row(
         children: _visibleTabs.map((tab) {
           final isActive = _activeTab == tab['key'];
+          final iconColor = isActive
+              ? Theme.of(context).colorScheme.onPrimaryContainer
+              : Theme.of(context).colorScheme.onSurface;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
               selected: isActive,
               onSelected: (_) => setState(() => _activeTab = tab['key'] as String),
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(tab['icon'] as IconData, size: 18),
-                  const SizedBox(width: 6),
-                  Text(tab['label'] as String),
-                ],
+              avatar: Icon(
+                tab['icon'] as IconData,
+                size: 18,
+                color: iconColor,
               ),
+              label: Text(tab['label'] as String),
               selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.5),
               labelStyle: TextStyle(
-                color: isActive
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(context).colorScheme.onSurface,
+                color: iconColor,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              showCheckmark: false,
             ),
           );
         }).toList(),
@@ -1245,33 +1245,40 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: iconColor),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
