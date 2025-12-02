@@ -13,6 +13,7 @@ import 'dropdown_settings_screen.dart';
 import 'admin_settings_screen.dart';
 import 'activity_log_screen.dart';
 import 'user_management_screen.dart';
+import 'kostpriser_screen.dart';
 
 /// Main Settings screen - Hub for all settings and administration
 class SettingsScreen extends StatefulWidget {
@@ -687,6 +688,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const DropdownSettingsScreen()),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.attach_money, color: Colors.purple),
+                ),
+                title: const Text('Kostpriser'),
+                subtitle: const Text('Administrer kost- og salgspriser'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const KostpriserScreen()),
                   );
                 },
               ),

@@ -23,6 +23,10 @@ class User extends HiveObject {
   @HiveField(5)
   String createdAt;
 
+  /// FCM token for push notifications (device-specific)
+  @HiveField(6)
+  String? fcmToken;
+
   User({
     required this.id,
     required this.name,
@@ -30,6 +34,7 @@ class User extends HiveObject {
     required this.role,
     this.enabledFeatures,
     required this.createdAt,
+    this.fcmToken,
   });
 
   Map<String, dynamic> toJson() => {
@@ -39,6 +44,7 @@ class User extends HiveObject {
         'role': role,
         'enabledFeatures': enabledFeatures,
         'createdAt': createdAt,
+        'fcmToken': fcmToken,
       };
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -48,5 +54,6 @@ class User extends HiveObject {
         role: json['role'] as String,
         enabledFeatures: (json['enabledFeatures'] as List<dynamic>?)?.cast<String>(),
         createdAt: json['createdAt'] as String,
+        fcmToken: json['fcmToken'] as String?,
       );
 }

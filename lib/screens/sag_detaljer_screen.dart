@@ -13,6 +13,8 @@ import 'blok_administration_screen.dart';
 import 'kabler_slanger_screen.dart';
 import 'sag_udstyr_screen.dart';
 import 'rentabilitet_screen.dart';
+import 'faktura_screen.dart';
+import '../models/kostpris.dart';
 
 class SagDetaljerScreen extends StatefulWidget {
   final String sagId;
@@ -41,6 +43,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     {'key': 'timer', 'label': 'Timer', 'icon': Icons.timer},
     {'key': 'beskeder', 'label': 'Beskeder', 'icon': Icons.chat_bubble_outline},
     {'key': 'aktivitet', 'label': 'Aktivitetslog', 'icon': Icons.list_alt},
+    {'key': 'priser', 'label': 'Priser', 'icon': Icons.attach_money},
     {'key': 'rentabilitet', 'label': 'Rentabilitet', 'icon': Icons.savings},
     {'key': 'faktura', 'label': 'Fakturaer', 'icon': Icons.receipt_long},
   ];
@@ -64,6 +67,8 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           return _authService.hasFeature(AppFeatures.messages);
         case 'aktivitet':
           return _authService.hasFeature(AppFeatures.activityLog);
+        case 'priser':
+          return _authService.isAdmin; // Admin only
         case 'rentabilitet':
           return _authService.hasFeature(AppFeatures.profitability);
         case 'faktura':
@@ -766,6 +771,8 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         return _buildBeskedTab();
       case 'aktivitet':
         return _buildAktivitetslogTab();
+      case 'priser':
+        return _buildPriserTab();
       case 'rentabilitet':
         return RentabilitetScreen(
           sagId: widget.sagId,
@@ -773,10 +780,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           titel: _sag?.adresse,
         );
       case 'faktura':
-        return _buildPlaceholderTab(
-          'Fakturaer',
-          'Generer fakturakladder og eksporter som PDF/CSV.',
-        );
+        return FakturaScreen(sagId: widget.sagId);
       case 'blokke':
         return BlokAdministrationScreen(sagId: widget.sagId);
       case 'kabler':
@@ -1835,8 +1839,338 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         return Colors.grey;
     }
   }
+
+  // ============================================
+  // PRISER TAB - Case-specific sales price overrides
+  // ============================================
+
+  Widget _buildPriserTab() {
+    final sagPriser = _dbService.getSagPriser(widget.sagId);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              const Icon(Icons.attach_money, size: 28),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Salgspriser for denne sag',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Tilpas priser specifikt for denne sag. Tomme felter bruger standardpriser.',
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              if (sagPriser.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => _clearAllSagPriser(),
+                  icon: const Icon(Icons.clear_all, size: 18),
+                  label: const Text('Nulstil alle'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Labor prices
+          _buildPriceSection(
+            'Timer',
+            Icons.timer,
+            PriceCategory.laborCategories,
+            sagPriser,
+          ),
+          const SizedBox(height: 16),
+
+          // Equipment prices
+          _buildPriceSection(
+            'Udstyr (pr. dag)',
+            Icons.inventory_2,
+            PriceCategory.equipmentCategories,
+            sagPriser,
+          ),
+          const SizedBox(height: 16),
+
+          // Blok prices
+          _buildPriceSection(
+            'Blokke',
+            Icons.view_quilt,
+            PriceCategory.blokCategories,
+            sagPriser,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceSection(
+    String title,
+    IconData icon,
+    List<String> categories,
+    List<SagPris> sagPriser,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            ...categories.map((category) {
+              final defaultPrice = _dbService.getDefaultSalesPrice(category);
+              final sagPris = sagPriser.where((p) => p.category == category).firstOrNull;
+              final hasOverride = sagPris != null;
+              final currentPrice = sagPris?.salgspris ?? defaultPrice;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        PriceCategory.getDisplayName(category),
+                        style: TextStyle(
+                          color: hasOverride ? AppColors.primary : null,
+                          fontWeight: hasOverride ? FontWeight.w600 : null,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '${defaultPrice.toStringAsFixed(0)} DKK',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 13,
+                          decoration: hasOverride ? TextDecoration.lineThrough : null,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    SizedBox(
+                      width: 100,
+                      child: hasOverride
+                          ? Text(
+                              '${currentPrice.toStringAsFixed(0)} DKK',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                              textAlign: TextAlign.right,
+                            )
+                          : Text(
+                              'Standard',
+                              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                              textAlign: TextAlign.right,
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(
+                        hasOverride ? Icons.edit : Icons.add,
+                        size: 20,
+                        color: hasOverride ? AppColors.primary : Colors.grey,
+                      ),
+                      onPressed: () => _editSagPris(category, sagPris, defaultPrice),
+                      tooltip: hasOverride ? 'Rediger' : 'Tilpas pris',
+                    ),
+                    if (hasOverride)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20, color: Colors.red),
+                        onPressed: () => _deleteSagPris(sagPris!),
+                        tooltip: 'Fjern tilpasning',
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editSagPris(String category, SagPris? existing, double defaultPrice) async {
+    final controller = TextEditingController(
+      text: existing?.salgspris.toStringAsFixed(0) ?? defaultPrice.toStringAsFixed(0),
+    );
+
+    final result = await showDialog<double?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Tilpas ${PriceCategory.getDisplayName(category)}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Standardpris: ${defaultPrice.toStringAsFixed(0)} DKK',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Salgspris (DKK)',
+                border: OutlineInputBorder(),
+                suffixText: 'DKK',
+              ),
+              keyboardType: TextInputType.number,
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuller'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = double.tryParse(controller.text);
+              Navigator.pop(context, value);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Gem'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (result != null) {
+      final now = DateTime.now().toIso8601String();
+      final sagPris = existing?.copyWith(
+        salgspris: result,
+        updatedAt: now,
+      ) ?? SagPris(
+        id: _uuid.v4(),
+        sagId: widget.sagId,
+        category: category,
+        salgspris: result,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await _dbService.upsertSagPris(sagPris, byUserName: _authService.currentUser?.name);
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${PriceCategory.getDisplayName(category)} opdateret'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteSagPris(SagPris sagPris) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fjern pristilpasning?'),
+        content: Text(
+          'Vil du fjerne den tilpassede pris for ${sagPris.displayName}? '
+          'Standardprisen vil blive brugt i stedet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuller'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Fjern'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _dbService.deleteSagPris(sagPris.id, byUserName: _authService.currentUser?.name);
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${sagPris.displayName} nulstillet til standard'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _clearAllSagPriser() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nulstil alle priser?'),
+        content: const Text(
+          'Vil du fjerne alle tilpassede priser for denne sag? '
+          'Alle standardpriser vil blive brugt i stedet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuller'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Nulstil alle'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _dbService.deleteSagPriserBySag(widget.sagId, byUserName: _authService.currentUser?.name);
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Alle priser nulstillet til standard'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
 }
-
-
-
-

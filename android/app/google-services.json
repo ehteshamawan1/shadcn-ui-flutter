@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "413383556944",
+    "project_id": "ska-dan-app",
+    "storage_bucket": "ska-dan-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:413383556944:android:c4af8520328a079a99f655",
+        "android_client_info": {
+          "package_name": "com.skadan.ska_dan_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPtYMoKSTNsC78ah3ZwzP-AwipQAajgVw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -33,8 +33,24 @@
 
   <title>SKA-DAN UDREG</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase SDK for Web Push Notifications -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
 </head>
 <body>
+  <script>
+    // Register Firebase Messaging Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('Firebase SW registered:', registration.scope);
+        })
+        .catch((error) => {
+          console.error('Firebase SW registration failed:', error);
+        });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

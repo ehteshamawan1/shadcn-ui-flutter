@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../constants/roles_and_features.dart';
 import 'database_service.dart';
+import 'push_notification_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -34,11 +35,30 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_currentUserKey, user.id);
 
+      // Save FCM token for push notifications
+      await _saveFcmToken(user);
+
       print('✅ User logged in: ${user.name} (${user.role})');
       return true;
     } catch (e) {
       print('❌ Login failed: $e');
       return false;
+    }
+  }
+
+  // Save FCM token for push notifications
+  Future<void> _saveFcmToken(User user) async {
+    try {
+      final pushService = PushNotificationService();
+      final fcmToken = pushService.fcmToken;
+
+      if (fcmToken != null && fcmToken != user.fcmToken) {
+        user.fcmToken = fcmToken;
+        await _db.updateUser(user);
+        print('✅ FCM token saved for ${user.name}');
+      }
+    } catch (e) {
+      print('❌ Failed to save FCM token: $e');
     }
   }
 

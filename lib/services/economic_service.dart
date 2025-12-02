@@ -6,20 +6,38 @@ import '../models/sag.dart';
 /// Service til integration med e-conomic API
 /// Dokumentation: https://restdocs.e-conomic.com/
 class EconomicService {
+  // Singleton pattern
+  static final EconomicService _instance = EconomicService._internal();
+  factory EconomicService() => _instance;
+  EconomicService._internal() {
+    // Initialize with default credentials
+    _appSecretToken = _defaultAppSecretToken;
+    _agreementGrantToken = _defaultAgreementGrantToken;
+  }
+
   // e-conomic API configuration
   static const String _baseUrl = 'https://restapi.e-conomic.com';
 
-  // Disse skal sættes i environment variables eller configuration
+  // Default credentials (provided by client)
+  static const String _defaultAppSecretToken = 'dMA0xASS55Wqy39YBBNb56WnclDh8lX3rEQLQomGZiY';
+  static const String _defaultAgreementGrantToken = 'EWBhRG43ggFCiMeqTYxErpFbYfCnmdMxbjQCnXlqowU';
+
   String? _appSecretToken;
   String? _agreementGrantToken;
 
-  /// Sæt API credentials
+  /// Sæt API credentials (can override defaults)
   void setCredentials({
     required String appSecretToken,
     required String agreementGrantToken,
   }) {
     _appSecretToken = appSecretToken;
     _agreementGrantToken = agreementGrantToken;
+  }
+
+  /// Reset to default credentials
+  void resetToDefaultCredentials() {
+    _appSecretToken = _defaultAppSecretToken;
+    _agreementGrantToken = _defaultAgreementGrantToken;
   }
 
   /// Check om credentials er sat
@@ -258,6 +276,210 @@ class EconomicService {
       }
     } catch (e) {
       debugPrint('Fejl i getProducts: $e');
+      rethrow;
+    }
+  }
+
+  /// Test API connection
+  Future<Map<String, dynamic>> testConnection() async {
+    try {
+      final url = Uri.parse('$_baseUrl/self');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          'Forbindelse fejlede: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i testConnection: $e');
+      rethrow;
+    }
+  }
+
+  /// Hent alle draft invoices
+  Future<List<Map<String, dynamic>>> getDraftInvoices({int pageSize = 100}) async {
+    try {
+      final url = Uri.parse('$_baseUrl/invoices/drafts?pagesize=$pageSize');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['collection'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      } else {
+        throw Exception(
+          'Fejl ved hentning af kladder: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i getDraftInvoices: $e');
+      rethrow;
+    }
+  }
+
+  /// Hent booked (godkendte) invoices
+  Future<List<Map<String, dynamic>>> getBookedInvoices({int pageSize = 100}) async {
+    try {
+      final url = Uri.parse('$_baseUrl/invoices/booked?pagesize=$pageSize');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['collection'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      } else {
+        throw Exception(
+          'Fejl ved hentning af fakturaer: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i getBookedInvoices: $e');
+      rethrow;
+    }
+  }
+
+  /// Hent en specifik draft invoice
+  Future<Map<String, dynamic>> getDraftInvoice(int draftInvoiceNumber) async {
+    try {
+      final url = Uri.parse('$_baseUrl/invoices/drafts/$draftInvoiceNumber');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          'Fejl ved hentning af kladde: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i getDraftInvoice: $e');
+      rethrow;
+    }
+  }
+
+  /// Opdater draft invoice
+  Future<Map<String, dynamic>> updateDraftInvoice(
+    int draftInvoiceNumber,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      final url = Uri.parse('$_baseUrl/invoices/drafts/$draftInvoiceNumber');
+      final response = await http.put(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode(updates),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          'Fejl ved opdatering af kladde: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i updateDraftInvoice: $e');
+      rethrow;
+    }
+  }
+
+  /// Slet draft invoice
+  Future<void> deleteDraftInvoice(int draftInvoiceNumber) async {
+    try {
+      final url = Uri.parse('$_baseUrl/invoices/drafts/$draftInvoiceNumber');
+      final response = await http.delete(url, headers: _getHeaders());
+
+      if (response.statusCode != 204 && response.statusCode != 200) {
+        throw Exception(
+          'Fejl ved sletning af kladde: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i deleteDraftInvoice: $e');
+      rethrow;
+    }
+  }
+
+  /// Hent alle kunder
+  Future<List<Map<String, dynamic>>> getCustomers({int pageSize = 100}) async {
+    try {
+      final url = Uri.parse('$_baseUrl/customers?pagesize=$pageSize');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['collection'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      } else {
+        throw Exception(
+          'Fejl ved hentning af kunder: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i getCustomers: $e');
+      rethrow;
+    }
+  }
+
+  /// Hent layouts (til faktura design)
+  Future<List<Map<String, dynamic>>> getLayouts() async {
+    try {
+      final url = Uri.parse('$_baseUrl/layouts');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['collection'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      } else {
+        throw Exception(
+          'Fejl ved hentning af layouts: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i getLayouts: $e');
+      rethrow;
+    }
+  }
+
+  /// Hent payment terms
+  Future<List<Map<String, dynamic>>> getPaymentTerms() async {
+    try {
+      final url = Uri.parse('$_baseUrl/payment-terms');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['collection'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      } else {
+        throw Exception(
+          'Fejl ved hentning af betalingsbetingelser: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i getPaymentTerms: $e');
+      rethrow;
+    }
+  }
+
+  /// Opret faktura direkte med e-conomic-formateret data
+  Future<Map<String, dynamic>> createDraftInvoiceRaw(Map<String, dynamic> invoiceData) async {
+    try {
+      final url = Uri.parse('$_baseUrl/invoices/drafts');
+      final response = await http.post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode(invoiceData),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          'Fejl ved oprettelse af faktura: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i createDraftInvoiceRaw: $e');
       rethrow;
     }
   }

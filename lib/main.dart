@@ -3,9 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
+import 'services/push_notification_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/sager_screen.dart';
@@ -24,6 +27,16 @@ import 'config/supabase_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase (for push notifications)
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('[Firebase] Initialized successfully');
+  } catch (e) {
+    debugPrint('[Firebase] Initialization error (non-fatal): $e');
+  }
+
   // Initialize Supabase (primary storage)
   if (SupabaseConfig.isConfigured) {
     await Supabase.initialize(
@@ -41,6 +54,13 @@ void main() async {
 
     // Initialize sync service (queues offline changes and syncs when online)
     await SyncService().init();
+
+    // Initialize push notifications (after database is ready)
+    try {
+      await PushNotificationService().initialize();
+    } catch (e) {
+      debugPrint('[FCM] Initialization error (non-fatal): $e');
+    }
 
     // Note: Session is NOT restored on startup - user must always login with PIN
     // await AuthService().restoreSession();

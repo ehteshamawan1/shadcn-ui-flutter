@@ -4,6 +4,7 @@ import '../models/timer_log.dart';
 import '../models/equipment_log.dart';
 import '../models/blok.dart';
 import '../providers/theme_provider.dart';
+import '../models/kostpris.dart';
 
 /// Profitability analysis screen for a Sag
 class RentabilitetScreen extends StatefulWidget {
@@ -110,10 +111,27 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
     final totalRegisteredRevenue = registeredBillableRevenue + registeredEquipmentRevenue + registeredBlokRevenue;
 
     // Costs
-    const avgLaborCostPerHour = 400.0; // DKK per hour
+    // Get cost prices from kostpriser database
+    double avgLaborCostPerHour = 400.0; // Default fallback
+    final laborKostpriser = PriceCategory.laborCategories
+        .map((c) => _dbService.getCostPrice(c))
+        .where((p) => p > 0)
+        .toList();
+    if (laborKostpriser.isNotEmpty) {
+      avgLaborCostPerHour = laborKostpriser.reduce((a, b) => a + b) / laborKostpriser.length;
+    }
+
+    // Get equipment drift percentage from kostpriser
+    final equipmentDriftPercent = _dbService.getCostPrice(PriceCategory.equipmentDriftPercent);
+    final equipmentDriftRate = equipmentDriftPercent > 0 ? equipmentDriftPercent / 100 : 0.3;
+
+    // Get overhead percentage from kostpriser
+    final overheadPercent = _dbService.getCostPrice(PriceCategory.overheadPercent);
+    final overheadRate = overheadPercent > 0 ? overheadPercent / 100 : 0.15;
+
     final laborCost = totalHours * avgLaborCostPerHour;
-    final equipmentCost = registeredEquipmentRevenue * 0.3; // 30% of equipment revenue
-    final overheadCost = totalRegisteredRevenue * 0.15; // 15% overhead
+    final equipmentCost = registeredEquipmentRevenue * equipmentDriftRate;
+    final overheadCost = totalRegisteredRevenue * overheadRate;
     final totalCosts = laborCost + equipmentCost + overheadCost;
 
     // Profit

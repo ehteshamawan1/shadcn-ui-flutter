@@ -23,13 +23,14 @@ class UserAdapter extends TypeAdapter<User> {
       role: fields[3] as String,
       enabledFeatures: (fields[4] as List?)?.cast<String>(),
       createdAt: fields[5] as String,
+      fcmToken: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, User obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class UserAdapter extends TypeAdapter<User> {
       ..writeByte(4)
       ..write(obj.enabledFeatures)
       ..writeByte(5)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(6)
+      ..write(obj.fcmToken);
   }
 
   @override

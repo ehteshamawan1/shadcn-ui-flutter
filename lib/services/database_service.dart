@@ -13,6 +13,7 @@ import '../models/sync_task.dart';
 import '../models/sag_message.dart';
 import '../models/activity_log.dart';
 import '../models/app_setting.dart';
+import '../models/kostpris.dart';
 import 'sync_service.dart';
 import 'settings_service.dart';
 
@@ -32,6 +33,7 @@ class DatabaseService {
   static const String equipmentRegistryBox = 'equipment_registry';
   static const String pricingConfigsBox = 'pricing_configs';
   static const String kostpriserBox = 'kostpriser';
+  static const String sagPriserBox = 'sag_priser';
   static const String faktureringBox = 'fakturering';
   static const String syncQueueBox = 'sync_queue';
   static const String messagesBox = 'messages';
@@ -82,12 +84,21 @@ class DatabaseService {
     if (!Hive.isAdapterRegistered(11)) {
       Hive.registerAdapter(AppSettingAdapter());
     }
+    if (!Hive.isAdapterRegistered(12)) {
+      Hive.registerAdapter(KostprisAdapter());
+    }
+    if (!Hive.isAdapterRegistered(13)) {
+      Hive.registerAdapter(SagPrisAdapter());
+    }
 
     // Try to open boxes, with automatic recovery from corrupted data
     await _openBoxesWithRecovery();
 
     // Initialize sample data if needed
     await initSampleData();
+
+    // Initialize default kostpriser
+    await initDefaultKostpriser();
 
     // Initialize settings service
     await SettingsService().init();
@@ -141,7 +152,8 @@ class DatabaseService {
     await Hive.openBox<KabelSlangeLog>(kabelSlangeLogsBox);
     await Hive.openBox(equipmentRegistryBox);
     await Hive.openBox(pricingConfigsBox);
-    await Hive.openBox(kostpriserBox);
+    await Hive.openBox<Kostpris>(kostpriserBox);
+    await Hive.openBox<SagPris>(sagPriserBox);
     await Hive.openBox(faktureringBox);
     await Hive.openBox<SyncTask>(syncQueueBox);
     await Hive.openBox<SagMessage>(messagesBox);
@@ -162,6 +174,7 @@ class DatabaseService {
       await Hive.deleteBoxFromDisk(equipmentRegistryBox);
       await Hive.deleteBoxFromDisk(pricingConfigsBox);
       await Hive.deleteBoxFromDisk(kostpriserBox);
+      await Hive.deleteBoxFromDisk(sagPriserBox);
       await Hive.deleteBoxFromDisk(faktureringBox);
       await Hive.deleteBoxFromDisk(syncQueueBox);
       await Hive.deleteBoxFromDisk(messagesBox);
@@ -1072,4 +1085,230 @@ class DatabaseService {
 
   // Generate unique ID
   String generateId() => _uuid.v4();
+
+  // ============================================
+  // KOSTPRISER (Cost/Sales Prices)
+  // ============================================
+
+  Box<Kostpris> get _kostpriserBoxTyped => Hive.box<Kostpris>(kostpriserBox);
+  Box<SagPris> get _sagPriserBox => Hive.box<SagPris>(sagPriserBox);
+
+  /// Get all kostpriser
+  List<Kostpris> getAllKostpriser() {
+    return _kostpriserBoxTyped.values.toList();
+  }
+
+  /// Get kostpris by category
+  Kostpris? getKostprisByCategory(String category) {
+    try {
+      return _kostpriserBoxTyped.values.firstWhere((k) => k.category == category);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get cost price (kostpris) for a category - returns default if not found
+  double getCostPrice(String category) {
+    final kostpris = getKostprisByCategory(category);
+    return kostpris?.kostpris ?? _getDefaultCostPrice(category);
+  }
+
+  /// Get default sales price (salgspris) for a category - returns default if not found
+  double getDefaultSalesPrice(String category) {
+    final kostpris = getKostprisByCategory(category);
+    return kostpris?.salgspris ?? _getDefaultSalesPrice(category);
+  }
+
+  /// Get sales price for a specific sag (with override support)
+  double getSalesPrice(String sagId, String category) {
+    // First check for sag-specific override
+    final sagPris = getSagPrisByCategory(sagId, category);
+    if (sagPris != null) {
+      return sagPris.salgspris;
+    }
+    // Fall back to default sales price
+    return getDefaultSalesPrice(category);
+  }
+
+  /// Add or update kostpris
+  Future<void> upsertKostpris(Kostpris kostpris, {String? byUserName}) async {
+    final isNew = !_kostpriserBoxTyped.containsKey(kostpris.id);
+    final oldKostpris = _kostpriserBoxTyped.get(kostpris.id);
+
+    await _kostpriserBoxTyped.put(kostpris.id, kostpris);
+    await _syncService.queueChange(
+      entityType: 'kostpris',
+      operation: 'upsert',
+      payload: kostpris.toJson(),
+    );
+
+    await logActivity(
+      entityType: 'kostpris',
+      action: isNew ? 'create' : 'update',
+      entityId: kostpris.id,
+      description: isNew
+          ? 'Ny pris oprettet: ${kostpris.displayName}'
+          : 'Pris opdateret: ${kostpris.displayName}',
+      oldData: oldKostpris?.toJson(),
+      newData: kostpris.toJson(),
+      userName: byUserName,
+    );
+  }
+
+  /// Delete kostpris
+  Future<void> deleteKostpris(String id, {String? byUserName}) async {
+    final kostpris = _kostpriserBoxTyped.get(id);
+    if (kostpris != null) {
+      await _kostpriserBoxTyped.delete(id);
+      await _syncService.queueChange(
+        entityType: 'kostpris',
+        operation: 'delete',
+        payload: {'id': id},
+      );
+
+      await logActivity(
+        entityType: 'kostpris',
+        action: 'delete',
+        entityId: id,
+        description: 'Pris slettet: ${kostpris.displayName}',
+        oldData: kostpris.toJson(),
+        userName: byUserName,
+      );
+    }
+  }
+
+  /// Initialize default kostpriser if empty
+  Future<void> initDefaultKostpriser() async {
+    if (_kostpriserBoxTyped.isEmpty) {
+      final now = DateTime.now().toIso8601String();
+      final defaults = _getDefaultKostpriser();
+
+      for (final entry in defaults.entries) {
+        final kostpris = Kostpris(
+          id: _uuid.v4(),
+          category: entry.key,
+          kostpris: entry.value['kostpris']!,
+          salgspris: entry.value['salgspris']!,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await _kostpriserBoxTyped.put(kostpris.id, kostpris);
+      }
+      debugPrint('Default kostpriser initialized');
+    }
+  }
+
+  /// Get default kostpriser configuration
+  Map<String, Map<String, double>> _getDefaultKostpriser() {
+    return {
+      // Labor rates (per hour)
+      PriceCategory.laborOpsaetning: {'kostpris': 400, 'salgspris': 650},
+      PriceCategory.laborNedtagning: {'kostpris': 400, 'salgspris': 650},
+      PriceCategory.laborTilsyn: {'kostpris': 400, 'salgspris': 600},
+      PriceCategory.laborMaalinger: {'kostpris': 400, 'salgspris': 700},
+      PriceCategory.laborSkimmel: {'kostpris': 450, 'salgspris': 800},
+      PriceCategory.laborBoring: {'kostpris': 400, 'salgspris': 650},
+      PriceCategory.laborAndet: {'kostpris': 400, 'salgspris': 600},
+      // Equipment rates (per day)
+      PriceCategory.equipmentAffugter: {'kostpris': 50, 'salgspris': 150},
+      PriceCategory.equipmentVarmeblaesser: {'kostpris': 40, 'salgspris': 120},
+      PriceCategory.equipmentVentilator: {'kostpris': 30, 'salgspris': 100},
+      PriceCategory.equipmentKaloriferer: {'kostpris': 60, 'salgspris': 180},
+      PriceCategory.equipmentGenerator: {'kostpris': 100, 'salgspris': 300},
+      PriceCategory.equipmentFyr: {'kostpris': 80, 'salgspris': 250},
+      PriceCategory.equipmentTower: {'kostpris': 70, 'salgspris': 200},
+      PriceCategory.equipmentQube: {'kostpris': 60, 'salgspris': 180},
+      PriceCategory.equipmentDraenhulsblaesser: {'kostpris': 40, 'salgspris': 120},
+      PriceCategory.equipmentAndet: {'kostpris': 50, 'salgspris': 150},
+      // Blok pricing (per unit)
+      PriceCategory.blokPerLejlighed: {'kostpris': 2000, 'salgspris': 4000},
+      PriceCategory.blokPerM2: {'kostpris': 30, 'salgspris': 60},
+      // Overhead percentages
+      PriceCategory.overheadPercent: {'kostpris': 15, 'salgspris': 15},
+      PriceCategory.equipmentDriftPercent: {'kostpris': 30, 'salgspris': 30},
+    };
+  }
+
+  double _getDefaultCostPrice(String category) {
+    return _getDefaultKostpriser()[category]?['kostpris'] ?? 0;
+  }
+
+  double _getDefaultSalesPrice(String category) {
+    return _getDefaultKostpriser()[category]?['salgspris'] ?? 0;
+  }
+
+  // ============================================
+  // SAG PRISER (Case-specific Sales Price Overrides)
+  // ============================================
+
+  /// Get all sag priser for a specific sag
+  List<SagPris> getSagPriser(String sagId) {
+    return _sagPriserBox.values.where((p) => p.sagId == sagId).toList();
+  }
+
+  /// Get sag pris by category
+  SagPris? getSagPrisByCategory(String sagId, String category) {
+    try {
+      return _sagPriserBox.values.firstWhere(
+        (p) => p.sagId == sagId && p.category == category,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Add or update sag pris
+  Future<void> upsertSagPris(SagPris sagPris, {String? byUserName}) async {
+    final isNew = !_sagPriserBox.containsKey(sagPris.id);
+    final oldSagPris = _sagPriserBox.get(sagPris.id);
+
+    await _sagPriserBox.put(sagPris.id, sagPris);
+    await _syncService.queueChange(
+      entityType: 'sag_pris',
+      operation: 'upsert',
+      payload: sagPris.toJson(),
+    );
+
+    await logActivity(
+      entityType: 'sag_pris',
+      action: isNew ? 'create' : 'update',
+      entityId: sagPris.id,
+      description: isNew
+          ? 'Sag-specifik pris oprettet: ${sagPris.displayName}'
+          : 'Sag-specifik pris opdateret: ${sagPris.displayName}',
+      oldData: oldSagPris?.toJson(),
+      newData: sagPris.toJson(),
+      userName: byUserName,
+    );
+  }
+
+  /// Delete sag pris
+  Future<void> deleteSagPris(String id, {String? byUserName}) async {
+    final sagPris = _sagPriserBox.get(id);
+    if (sagPris != null) {
+      await _sagPriserBox.delete(id);
+      await _syncService.queueChange(
+        entityType: 'sag_pris',
+        operation: 'delete',
+        payload: {'id': id},
+      );
+
+      await logActivity(
+        entityType: 'sag_pris',
+        action: 'delete',
+        entityId: id,
+        description: 'Sag-specifik pris slettet: ${sagPris.displayName}',
+        oldData: sagPris.toJson(),
+        userName: byUserName,
+      );
+    }
+  }
+
+  /// Delete all sag priser for a sag
+  Future<void> deleteSagPriserBySag(String sagId, {String? byUserName}) async {
+    final priser = getSagPriser(sagId);
+    for (final pris in priser) {
+      await deleteSagPris(pris.id, byUserName: byUserName);
+    }
+  }
 }
