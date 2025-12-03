@@ -13,12 +13,16 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Enable core library desugaring for flutter_local_notifications
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
+        // Suppress deprecation warnings from dependencies (nfc_manager uses deprecated Kotlin API)
+        freeCompilerArgs = listOf("-Xsuppress-warning=DEPRECATION")
     }
 
     defaultConfig {
@@ -30,6 +34,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Required for core library desugaring
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -43,4 +49,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Core library desugaring for Java 8+ API support on older Android versions
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

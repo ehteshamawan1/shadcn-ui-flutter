@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html show AnchorElement;
 import '../models/sag.dart';
 import 'database_service.dart';
+
+// Conditional import: uses stub on mobile, web implementation on web
+import 'download_helper_stub.dart'
+    if (dart.library.html) 'download_helper_web.dart' as download_helper;
 
 class ExportService {
   final DatabaseService _db = DatabaseService();
@@ -76,19 +78,33 @@ class ExportService {
     return exportSagerToCSV(alleSager);
   }
 
-  /// Download CSV fil (web platform)
-  void downloadCSVFile(String csvContent, String filename) {
-    if (kIsWeb) {
-      // For web: Create download link
-      final bytes = utf8.encode(csvContent);
-      final base64str = base64Encode(bytes);
-      html.AnchorElement(href: 'data:text/csv;charset=utf-8;base64,$base64str')
-        ..setAttribute('download', filename)
-        ..click();
-    } else {
-      // For mobile/desktop: Will need to use path_provider and file system
-      debugPrint('Mobile CSV download not implemented yet');
-      debugPrint('CSV Content:\n$csvContent');
+  /// Download CSV fil (cross-platform)
+  Future<void> downloadCSVFile(String csvContent, String filename) async {
+    try {
+      await download_helper.downloadFile(
+        content: csvContent,
+        filename: filename,
+        mimeType: 'text/csv',
+      );
+      debugPrint('CSV file downloaded: $filename');
+    } catch (e) {
+      debugPrint('Error downloading CSV: $e');
+      rethrow;
+    }
+  }
+
+  /// Download JSON fil (cross-platform)
+  Future<void> downloadJSONFile(String jsonContent, String filename) async {
+    try {
+      await download_helper.downloadFile(
+        content: jsonContent,
+        filename: filename,
+        mimeType: 'application/json',
+      );
+      debugPrint('JSON file downloaded: $filename');
+    } catch (e) {
+      debugPrint('Error downloading JSON: $e');
+      rethrow;
     }
   }
 }

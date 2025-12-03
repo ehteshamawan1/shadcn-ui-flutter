@@ -165,7 +165,7 @@ class _SagerScreenState extends State<SagerScreen> {
           ? 'aktive_sager_${DateTime.now().millisecondsSinceEpoch}.csv'
           : 'afsluttede_sager_${DateTime.now().millisecondsSinceEpoch}.csv';
 
-      _exportService.downloadCSVFile(csv, filename);
+      await _exportService.downloadCSVFile(csv, filename);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

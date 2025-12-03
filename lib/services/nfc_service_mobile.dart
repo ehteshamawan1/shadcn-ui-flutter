@@ -43,7 +43,7 @@ class NFCService {
                     if (payload != null) {
                       // Decode NDEF payload (skip language code byte)
                       final text = utf8.decode(payload.sublist(3));
-                      print('📖 NFC Data: $text');
+                      print('NFC Data: $text');
 
                       // Try to parse as JSON
                       try {
@@ -140,7 +140,7 @@ class NFCService {
         status: equipmentData.status ?? 'hjemme',
         data: {
           'permanentId': equipmentData.id,
-          'mærke': equipmentData.maerke,
+          'maerke': equipmentData.maerke,
           'model': equipmentData.model,
           'serie': equipmentData.serie,
           'regNr': equipmentData.regNr,
@@ -182,13 +182,13 @@ class NFCService {
             // Write to tag
             await ndef.write(ndefMessage);
 
-            print('✅ Successfully wrote to NFC tag (ID: ${equipmentData.id})');
+            print('Successfully wrote to NFC tag (ID: ${equipmentData.id})');
 
             writeCompleted = true;
             await NfcManager.instance.stopSession();
             _isWriting = false;
           } catch (e) {
-            print('❌ NFC writing failed: $e');
+            print('NFC writing failed: $e');
             writeError = e.toString();
             _isWriting = false;
             try {
@@ -211,7 +211,7 @@ class NFCService {
 
       if (!writeCompleted) {
         _isWriting = false;
-        throw Exception('Timeout: Hold telefonen tæt på NFC tagget');
+        throw Exception('Timeout: Hold telefonen taet paa NFC tagget');
       }
     } catch (e) {
       _isWriting = false;
