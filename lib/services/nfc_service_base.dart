@@ -32,15 +32,35 @@ class NFCData {
         'status': status,
       };
 
-  factory NFCData.fromJson(Map<String, dynamic> json) => NFCData(
-        id: json['id'] as String? ?? '',
-        type: json['type'] as String? ?? 'equipment',
-        navn: json['navn'] as String?,
-        placering: json['placering'] as String?,
-        data: json['data'] as Map<String, dynamic>?,
-        sagId: json['sagId'] as String?,
-        status: json['status'] as String?,
-      );
+  factory NFCData.fromJson(Map<String, dynamic> json) {
+    // Handle both old format ('equipment') and new compact format ('eq')
+    String type = json['type'] as String? ?? 'equipment';
+    if (type == 'eq') type = 'equipment';
+
+    // Handle compact data format with short keys
+    Map<String, dynamic>? data = json['data'] as Map<String, dynamic>?;
+    if (data != null) {
+      // Expand short keys to full keys for compatibility
+      if (data.containsKey('m') && !data.containsKey('maerke')) {
+        data = Map<String, dynamic>.from(data);
+        data['maerke'] = data['m'];
+      }
+      if (data.containsKey('o') && !data.containsKey('model')) {
+        data = Map<String, dynamic>.from(data);
+        data['model'] = data['o'];
+      }
+    }
+
+    return NFCData(
+      id: json['id'] as String? ?? '',
+      type: type,
+      navn: json['navn'] as String?,
+      placering: json['placering'] as String?,
+      data: data,
+      sagId: json['sagId'] as String?,
+      status: json['status'] as String?,
+    );
+  }
 }
 
 class NFCEquipmentData {

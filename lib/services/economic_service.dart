@@ -71,6 +71,10 @@ class EconomicService {
 
       final body = {
         'date': DateTime.now().toIso8601String().split('T')[0],
+        'currency': 'DKK',
+        'paymentTerms': {
+          'paymentTermsNumber': 1,
+        },
         'customer': {
           'customerNumber': customer['customerNumber'],
         },
@@ -78,6 +82,9 @@ class EconomicService {
           'name': sag.byggeleder,
           'address': sag.adresse,
           'email': sag.byggelederEmail ?? '',
+          'vatZone': {
+            'vatZoneNumber': 1,
+          },
         },
         'layout': {
           'layoutNumber': 1, // Default layout
