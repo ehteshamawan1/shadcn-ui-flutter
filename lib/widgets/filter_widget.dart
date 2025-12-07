@@ -106,6 +106,7 @@ class FilterBar extends StatelessWidget {
             Wrap(
               spacing: spacing,
               runSpacing: spacing,
+              alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 ...filters.map((filter) => _buildFilter(context, filter)),
@@ -471,6 +472,7 @@ class SummaryCardsFilter extends StatelessWidget {
         return Wrap(
           spacing: 12,
           runSpacing: 12,
+          alignment: WrapAlignment.center,
           children: allOptions.map((opt) {
             final isSelected = selectedValue == opt.value;
             return _SummaryCard(

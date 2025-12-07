@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dropdown_settings_screen.dart';
+import '../services/economic_service.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -15,6 +16,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   final _agreementGrantController = TextEditingController();
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isTesting = false;
+  String? _testResult;
+  bool? _testSuccess;
 
   @override
   void initState() {
@@ -70,6 +74,53 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       }
     } finally {
       setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _testConnection() async {
+    final appSecret = _appSecretController.text.trim();
+    final agreementGrant = _agreementGrantController.text.trim();
+
+    if (appSecret.isEmpty || agreementGrant.isEmpty) {
+      setState(() {
+        _testResult = 'Indtast venligst begge tokens først';
+        _testSuccess = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isTesting = true;
+      _testResult = null;
+      _testSuccess = null;
+    });
+
+    try {
+      // Create service instance and set credentials
+      final service = EconomicService();
+      service.setCredentials(
+        appSecretToken: appSecret,
+        agreementGrantToken: agreementGrant,
+      );
+
+      final result = await service.testConnection();
+      final agreementName = result['agreement']?['name'] ?? 'Ukendt';
+
+      if (mounted) {
+        setState(() {
+          _testResult = 'Forbindelse OK - $agreementName';
+          _testSuccess = true;
+          _isTesting = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _testResult = 'Forbindelse fejlede: ${e.toString().replaceAll('Exception:', '').trim()}';
+          _testSuccess = false;
+          _isTesting = false;
+        });
+      }
     }
   }
 
@@ -171,6 +222,64 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            // Test connection button
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _isTesting ? null : _testConnection,
+                                icon: _isTesting
+                                    ? const SizedBox(
+                                        height: 16,
+                                        width: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.wifi_tethering),
+                                label: Text(_isTesting ? 'Tester forbindelse...' : 'Test forbindelse'),
+                              ),
+                            ),
+                            // Test result
+                            if (_testResult != null) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: _testSuccess == true
+                                      ? Colors.green[50]
+                                      : Colors.red[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: _testSuccess == true
+                                        ? Colors.green[300]!
+                                        : Colors.red[300]!,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _testSuccess == true
+                                          ? Icons.check_circle
+                                          : Icons.error,
+                                      color: _testSuccess == true
+                                          ? Colors.green[700]
+                                          : Colors.red[700],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _testResult!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: _testSuccess == true
+                                              ? Colors.green[900]
+                                              : Colors.red[900],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

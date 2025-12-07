@@ -459,21 +459,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Seneste sager',
-                                        style: Theme.of(context).textTheme.titleLarge,
-                                      ),
-                                      Text(
-                                        'Aktive sager - klik for detaljer eller hurtige handlinger',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey[600],
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Seneste sager',
+                                          style: Theme.of(context).textTheme.titleLarge,
                                         ),
-                                      ),
-                                    ],
+                                        Text(
+                                          'Aktive sager - klik for detaljer eller hurtige handlinger',
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Colors.grey[600],
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   AccessControlledWidget(
                                     featureKey: AppFeatures.createCases,
                                     child: TextButton.icon(

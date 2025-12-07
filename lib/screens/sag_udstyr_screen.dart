@@ -281,6 +281,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _loading = true);
 
     // Load blokke for this sag
@@ -295,6 +296,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
 
     _applyFilters();
 
+    if (!mounted) return;
     setState(() => _loading = false);
   }
 
@@ -508,6 +510,12 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
 
     await _dbService.addEquipmentLog(equipmentLog);
 
+    // Reload data FIRST to ensure UI updates
+    await _loadData();
+
+    // Check if still mounted before UI operations
+    if (!mounted) return;
+
     _resetForm();
     Navigator.of(context).pop();
 
@@ -517,8 +525,6 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
         backgroundColor: AppColors.success,
       ),
     );
-
-    _loadData();
   }
 
   Future<void> _changeStatus(SagEquipment equipment, String newStatus) async {

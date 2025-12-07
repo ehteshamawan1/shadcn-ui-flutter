@@ -176,15 +176,30 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
   Future<void> _testEconomicConnection() async {
     try {
       final result = await _economicService.testConnection();
-      setState(() {
-        _economicConnected = true;
-        _economicAgreementName = result['agreement']?['name'] ?? 'Connected';
-      });
+      if (mounted) {
+        setState(() {
+          _economicConnected = true;
+          _economicAgreementName = result['agreement']?['name'] ?? 'Connected';
+        });
+      }
     } catch (e) {
-      setState(() {
-        _economicConnected = false;
-        _economicAgreementName = null;
-      });
+      debugPrint('e-conomic connection failed: $e');
+      if (mounted) {
+        setState(() {
+          _economicConnected = false;
+          _economicAgreementName = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kunne ikke forbinde til e-conomic: ${e.toString().replaceAll('Exception:', '').trim()}'),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Prøv igen',
+              onPressed: _testEconomicConnection,
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -582,36 +597,45 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                         ],
                       ),
                     ),
-                    // e-conomic status
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _economicConnected
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _economicConnected ? Colors.green : Colors.orange,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _economicConnected ? Icons.cloud_done : Icons.cloud_off,
-                            size: 16,
-                            color: _economicConnected ? Colors.green : Colors.orange,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _economicConnected ? 'e-conomic' : 'Offline',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                    // e-conomic status (tappable to retry connection)
+                    InkWell(
+                      onTap: !_economicConnected ? _testEconomicConnection : null,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Tooltip(
+                        message: _economicConnected
+                            ? 'Forbundet til e-conomic'
+                            : 'Tryk for at prøve igen',
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _economicConnected
+                                ? Colors.green.withOpacity(0.1)
+                                : Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
                               color: _economicConnected ? Colors.green : Colors.orange,
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _economicConnected ? Icons.cloud_done : Icons.cloud_off,
+                                size: 16,
+                                color: _economicConnected ? Colors.green : Colors.orange,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _economicConnected ? 'e-conomic' : 'Offline - tryk for at prøve igen',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: _economicConnected ? Colors.green : Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
