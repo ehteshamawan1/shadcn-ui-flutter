@@ -132,18 +132,15 @@ class NFCService {
     try {
       _isWriting = true;
 
-      // MINIMAL NFC DATA - Only store essential info to fit in 137 bytes (NTAG213)
-      // All other data (status, sagId, maerke, model) is looked up from database when scanned
+      // MINIMAL NFC DATA - Only store the equipment ID (~20 bytes)
+      // All other data is looked up from database when scanned
       final nfcData = NFCData(
-        id: equipmentData.id, // PERMANENT ID - essential for identification
-        type: 'eq', // Short type identifier
-        navn: equipmentData.navn,
-        sagId: null, // Don't store - lookup from DB
-        status: null, // Don't store - lookup from DB
-        data: {
-          'm': equipmentData.maerke, // Short key for maerke
-          'o': equipmentData.model,  // Short key for model
-        },
+        id: equipmentData.id, // Only the ID - e.g., "2025-12345"
+        type: 'eq',
+        navn: null,
+        sagId: null,
+        status: null,
+        data: null,
       );
 
       bool writeCompleted = false;
