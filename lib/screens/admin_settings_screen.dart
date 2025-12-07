@@ -55,6 +55,13 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       await prefs.setString('economic_app_secret', _appSecretController.text);
       await prefs.setString('economic_agreement_grant', _agreementGrantController.text);
 
+      // Also update the EconomicService singleton so changes take effect immediately
+      final economicService = EconomicService();
+      economicService.setCredentials(
+        appSecretToken: _appSecretController.text,
+        agreementGrantToken: _agreementGrantController.text,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

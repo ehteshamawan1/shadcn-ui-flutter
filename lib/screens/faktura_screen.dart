@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../services/economic_service.dart';
 import '../services/auth_service.dart';
@@ -175,6 +176,25 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
 
   Future<void> _testEconomicConnection() async {
     try {
+      // Load saved credentials from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final savedAppSecret = prefs.getString('economic_app_secret');
+      final savedAgreementGrant = prefs.getString('economic_agreement_grant');
+
+      // If we have saved credentials, use them
+      if (savedAppSecret != null && savedAppSecret.isNotEmpty &&
+          savedAgreementGrant != null && savedAgreementGrant.isNotEmpty) {
+        _economicService.setCredentials(
+          appSecretToken: savedAppSecret,
+          agreementGrantToken: savedAgreementGrant,
+        );
+        debugPrint('e-conomic: Using saved credentials from settings');
+      } else {
+        // Reset to default credentials
+        _economicService.resetToDefaultCredentials();
+        debugPrint('e-conomic: Using default credentials');
+      }
+
       final result = await _economicService.testConnection();
       if (mounted) {
         setState(() {
