@@ -58,6 +58,9 @@ class EconomicService {
   }
 
   /// Opret draft invoice i e-conomic
+  ///
+  /// e-conomic API kræver at invoice lines har et produkt reference.
+  /// Vi finder eller opretter et generisk "Service" produkt for at bruge som fallback.
   Future<Map<String, dynamic>> createDraftInvoice({
     required Sag sag,
     required List<Map<String, dynamic>> lines,
@@ -68,8 +71,44 @@ class EconomicService {
 
       // Find eller opret kunde
       final customer = await _getOrCreateCustomer(sag);
+      debugPrint('e-conomic: Customer found/created: ${customer['customerNumber']}');
 
-      final body = {
+      // Get first available layout
+      final layouts = await getLayouts();
+      int? layoutNumber;
+      if (layouts.isNotEmpty) {
+        layoutNumber = layouts.first['layoutNumber'] as int?;
+        debugPrint('e-conomic: Found ${layouts.length} layouts, using: $layoutNumber');
+      } else {
+        debugPrint('e-conomic: No layouts found, will omit layout from request');
+      }
+
+      // Find eller opret et generisk produkt til invoice lines
+      final product = await _getOrCreateGenericProduct();
+      debugPrint('e-conomic: Using product: ${product['productNumber']}');
+
+      // Convert lines to e-conomic format with product reference
+      final formattedLines = <Map<String, dynamic>>[];
+
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i];
+        final description = line['description'] as String? ?? 'Service';
+        final quantity = (line['quantity'] ?? 1).toDouble();
+        final unitNetPrice = (line['unitNetPrice'] ?? 0).toDouble();
+
+        formattedLines.add({
+          'lineNumber': i + 1,
+          'sortKey': i + 1,
+          'description': description,
+          'product': {
+            'productNumber': product['productNumber'],
+          },
+          'quantity': quantity,
+          'unitNetPrice': unitNetPrice,
+        });
+      }
+
+      final body = <String, dynamic>{
         'date': DateTime.now().toIso8601String().split('T')[0],
         'currency': 'DKK',
         'paymentTerms': {
@@ -81,21 +120,107 @@ class EconomicService {
         'recipient': {
           'name': sag.byggeleder,
           'address': sag.adresse,
-          'email': sag.byggelederEmail ?? '',
           'vatZone': {
             'vatZoneNumber': 1,
           },
         },
-        'layout': {
-          'layoutNumber': 1, // Default layout
-        },
-        'lines': lines,
+        'lines': formattedLines,
         'notes': {
           'heading': 'Sagsnr: ${sag.sagsnr}',
           'textLine1': notes ?? sag.beskrivelse ?? '',
         },
         'references': {
           'other': sag.sagsnr,
+        },
+      };
+
+      // Add email only if not empty
+      if (sag.byggelederEmail != null && sag.byggelederEmail!.isNotEmpty) {
+        (body['recipient'] as Map<String, dynamic>)['email'] = sag.byggelederEmail;
+      }
+
+      // Add layout only if we found one
+      if (layoutNumber != null) {
+        body['layout'] = {
+          'layoutNumber': layoutNumber,
+        };
+      }
+
+      debugPrint('e-conomic: Creating draft invoice with ${formattedLines.length} lines');
+      debugPrint('e-conomic: Request body: ${jsonEncode(body)}');
+
+      final response = await http.post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201) {
+        final result = jsonDecode(response.body) as Map<String, dynamic>;
+        debugPrint('e-conomic: Draft invoice created successfully: ${result['draftInvoiceNumber']}');
+        return result;
+      } else {
+        debugPrint('e-conomic: Error response: ${response.body}');
+        throw Exception(
+          'Fejl ved oprettelse af faktura: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Fejl i createDraftInvoice: $e');
+      rethrow;
+    }
+  }
+
+  /// Find eller opret et generisk "Service" produkt til invoice lines
+  Future<Map<String, dynamic>> _getOrCreateGenericProduct() async {
+    const serviceProductNumber = 'SERVICE';
+
+    try {
+      // Prøv at finde eksisterende service produkt
+      final url = Uri.parse('$_baseUrl/products/$serviceProductNumber');
+      final response = await http.get(url, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+
+      // Produkt findes ikke, opret det
+      debugPrint('e-conomic: Creating generic SERVICE product');
+      return await _createGenericProduct();
+    } catch (e) {
+      debugPrint('e-conomic: Error finding product, creating new: $e');
+      return await _createGenericProduct();
+    }
+  }
+
+  /// Opret et generisk service produkt
+  Future<Map<String, dynamic>> _createGenericProduct() async {
+    try {
+      // Først skal vi finde en produktgruppe
+      final groupsUrl = Uri.parse('$_baseUrl/product-groups');
+      final groupsResponse = await http.get(groupsUrl, headers: _getHeaders());
+
+      int productGroupNumber = 1; // Default
+      if (groupsResponse.statusCode == 200) {
+        final groupsData = jsonDecode(groupsResponse.body) as Map<String, dynamic>;
+        final groups = groupsData['collection'] as List?;
+        if (groups != null && groups.isNotEmpty) {
+          productGroupNumber = groups.first['productGroupNumber'] as int? ?? 1;
+        }
+      }
+      debugPrint('e-conomic: Using product group: $productGroupNumber');
+
+      final url = Uri.parse('$_baseUrl/products');
+      final body = {
+        'productNumber': 'SERVICE',
+        'name': 'Service/Udstyr',
+        'description': 'Generisk produkt til fakturering af services og udstyr',
+        'productGroup': {
+          'productGroupNumber': productGroupNumber,
+        },
+        'salesPrice': 0.0,
+        'unit': {
+          'unitNumber': 1, // Typically "stk" or similar
         },
       };
 
@@ -108,12 +233,27 @@ class EconomicService {
       if (response.statusCode == 201) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
-        throw Exception(
-          'Fejl ved oprettelse af faktura: ${response.statusCode} - ${response.body}',
-        );
+        // Hvis produktoprettelse fejler, prøv at finde et eksisterende produkt
+        debugPrint('e-conomic: Could not create product: ${response.body}');
+        return await _findAnyProduct();
       }
     } catch (e) {
-      debugPrint('Fejl i createDraftInvoice: $e');
+      debugPrint('e-conomic: Error creating product: $e');
+      return await _findAnyProduct();
+    }
+  }
+
+  /// Find et hvilket som helst eksisterende produkt som fallback
+  Future<Map<String, dynamic>> _findAnyProduct() async {
+    try {
+      final products = await getProducts();
+      if (products.isNotEmpty) {
+        debugPrint('e-conomic: Using existing product: ${products.first['productNumber']}');
+        return products.first;
+      }
+      throw Exception('Ingen produkter fundet i e-conomic. Opret mindst ét produkt først.');
+    } catch (e) {
+      debugPrint('e-conomic: Error finding any product: $e');
       rethrow;
     }
   }

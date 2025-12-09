@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/platform_tags.dart';
 import 'nfc_service_base.dart';
 
 class NFCService {
@@ -32,51 +33,49 @@ class NFCService {
       await NfcManager.instance.startSession(
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndefMessage = tag.data['ndef'];
-            if (ndefMessage != null) {
-              final records = ndefMessage['cachedMessage']['records'];
+            print('NFC Read: Tag discovered, data keys: ${tag.data.keys.toList()}');
 
-              if (records != null && records.isNotEmpty) {
-                for (var record in records) {
-                  try {
-                    final payload = record['payload'] as List<int>?;
-                    if (payload != null) {
-                      // Decode NDEF payload (skip language code byte)
-                      final text = utf8.decode(payload.sublist(3));
-                      print('NFC Data: $text');
+            // Use Ndef class for safe access
+            final ndef = Ndef.from(tag);
 
-                      // Try to parse as JSON
-                      try {
-                        final jsonData = jsonDecode(text) as Map<String, dynamic>;
-                        final nfcData = NFCData.fromJson(jsonData);
-                        onRead(nfcData);
-                      } catch (e) {
-                        // If not JSON, try to extract equipment number
-                        final affugterNr = _extractAffugterNumber(text);
-                        if (affugterNr != null) {
-                          onRead(NFCData(
-                            id: affugterNr,
-                            type: 'equipment',
-                            navn: 'Affugter $affugterNr',
-                            data: {'rawText': text, 'parsedFromText': true},
-                          ));
-                        } else {
-                          // Blank tag
-                          onRead(NFCData(
-                            id: '',
-                            type: 'equipment',
-                            data: {'blankTag': true, 'firstTimeSetup': true},
-                          ));
-                        }
-                      }
-                      break;
-                    }
-                  } catch (e) {
-                    print('Error parsing record: $e');
+            if (ndef != null && ndef.cachedMessage != null && ndef.cachedMessage!.records.isNotEmpty) {
+              // Tag has NDEF data
+              final record = ndef.cachedMessage!.records.first;
+              final payload = record.payload;
+
+              if (payload.isNotEmpty) {
+                // Decode NDEF text payload - first byte is language code length
+                final langCodeLen = payload[0];
+                final text = utf8.decode(payload.sublist(1 + langCodeLen));
+                print('NFC Read: Data: $text');
+
+                // Try to parse as JSON
+                try {
+                  final jsonData = jsonDecode(text) as Map<String, dynamic>;
+                  final nfcData = NFCData.fromJson(jsonData);
+                  onRead(nfcData);
+                } catch (e) {
+                  // If not JSON, try to extract equipment number
+                  final affugterNr = _extractAffugterNumber(text);
+                  if (affugterNr != null) {
+                    onRead(NFCData(
+                      id: affugterNr,
+                      type: 'equipment',
+                      navn: 'Affugter $affugterNr',
+                      data: {'rawText': text, 'parsedFromText': true},
+                    ));
+                  } else {
+                    // Unknown text format
+                    onRead(NFCData(
+                      id: '',
+                      type: 'equipment',
+                      data: {'rawText': text, 'unknownFormat': true},
+                    ));
                   }
                 }
               } else {
-                // No records - blank tag
+                // Empty payload - blank tag
+                print('NFC Read: Empty payload');
                 onRead(NFCData(
                   id: '',
                   type: 'equipment',
@@ -84,7 +83,8 @@ class NFCService {
                 ));
               }
             } else {
-              // No NDEF data - blank tag
+              // No NDEF data or no cached message - blank tag
+              print('NFC Read: No NDEF data or empty tag');
               onRead(NFCData(
                 id: '',
                 type: 'equipment',
@@ -104,7 +104,7 @@ class NFCService {
               // Session may already be stopped
             }
             _isScanning = false;
-            onError?.call('Fejl ved behandling af NFC data');
+            onError?.call('Fejl ved behandling af NFC data: $e');
           }
         },
       );
@@ -124,14 +124,17 @@ class NFCService {
   }
 
   // Write equipment data to NFC tag
-  Future<void> writeEquipmentToTag(NFCEquipmentData equipmentData) async {
+  // Returns true if write was successful
+  Future<bool> writeEquipmentToTag(NFCEquipmentData equipmentData) async {
     if (_isWriting) {
       throw Exception('NFC skrivning er allerede i gang');
     }
 
-    try {
-      _isWriting = true;
+    _isWriting = true;
+    final completer = Completer<bool>();
+    String? writeError;
 
+    try {
       // MINIMAL NFC DATA - Only store the equipment ID (~20 bytes)
       // All other data is looked up from database when scanned
       final nfcData = NFCData(
@@ -143,42 +146,67 @@ class NFCService {
         data: null,
       );
 
-      bool writeCompleted = false;
-      String? writeError;
-
+      final jsonString = jsonEncode(nfcData.toJson());
       print('NFC: Starting write session for ID: ${equipmentData.id}');
+      print('NFC: JSON to write: $jsonString (${jsonString.length} bytes)');
 
       await NfcManager.instance.startSession(
         onDiscovered: (NfcTag tag) async {
           try {
             print('NFC: Tag discovered, checking NDEF support...');
+            print('NFC: Tag data keys: ${tag.data.keys.toList()}');
+
             final ndef = Ndef.from(tag);
 
             if (ndef == null) {
-              print('NFC Error: Tag does not support NDEF');
-              throw Exception('NFC tag understøtter ikke NDEF format');
+              // Check if tag supports NdefFormatable (blank/unformatted tags)
+              print('NFC: No NDEF found, checking for NdefFormatable...');
+              final ndefFormatable = NdefFormatable.from(tag);
+
+              if (ndefFormatable != null) {
+                print('NFC: Tag is NdefFormatable - will format and write');
+
+                // Create the NDEF message to write during format
+                final ndefMessage = NdefMessage([
+                  NdefRecord.createText(jsonString, languageCode: 'en'),
+                ]);
+
+                try {
+                  await ndefFormatable.format(ndefMessage);
+                  print('NFC: Tag formatted and written successfully!');
+                  if (!completer.isCompleted) completer.complete(true);
+                  return;
+                } catch (formatEx) {
+                  print('NFC: Format failed: $formatEx');
+                  final errorStr = formatEx.toString().toLowerCase();
+                  if (errorStr.contains('io_exception') || errorStr.contains('ioexception')) {
+                    writeError = 'NFC kommunikationsfejl under formatering - hold telefonen stille og prøv igen';
+                  } else {
+                    writeError = 'Kunne ikke formatere NFC tag: $formatEx';
+                  }
+                  if (!completer.isCompleted) completer.complete(false);
+                  return;
+                }
+              } else {
+                print('NFC Error: Tag does not support NDEF or NdefFormatable');
+                writeError = 'NFC tag understøtter ikke NDEF format';
+                if (!completer.isCompleted) completer.complete(false);
+                return;
+              }
             }
+
+            print('NFC: NDEF found - isWritable: ${ndef.isWritable}, maxSize: ${ndef.maxSize}');
 
             if (!ndef.isWritable) {
               print('NFC Error: Tag is not writable (isWritable=false)');
-              throw Exception('NFC tag er skrivebeskyttet');
+              writeError = 'NFC tag er skrivebeskyttet';
+              if (!completer.isCompleted) completer.complete(false);
+              return;
             }
 
-            // Create NDEF message
-            final jsonString = jsonEncode(nfcData.toJson());
-            print('NFC: JSON data length: ${jsonString.length} bytes');
-
-            final languageCodeBytes = [0x02, 0x65, 0x6e]; // "en"
-            final textBytes = utf8.encode(jsonString);
-            final payload = [...languageCodeBytes, ...textBytes];
-
+            // Use the built-in createText method for proper NDEF text record formatting
             final ndefMessage = NdefMessage([
-              NdefRecord(
-                typeNameFormat: NdefTypeNameFormat.nfcWellknown,
-                type: Uint8List.fromList([0x54]), // "T" for Text
-                identifier: Uint8List(0),
-                payload: Uint8List.fromList(payload),
-              ),
+              NdefRecord.createText(jsonString, languageCode: 'en'),
             ]);
 
             // Check size before writing
@@ -187,63 +215,135 @@ class NFCService {
             print('NFC: Message size: $messageSize bytes, Tag capacity: $maxSize bytes');
 
             if (messageSize > maxSize) {
-              throw Exception('Data er for stor til NFC tag ($messageSize > $maxSize bytes)');
+              writeError = 'Data er for stor til NFC tag ($messageSize > $maxSize bytes)';
+              if (!completer.isCompleted) completer.complete(false);
+              return;
             }
 
-            // Write to tag with detailed error handling
+            // Write to tag - this is the critical operation
+            // Retry up to 3 times for io_exception errors
             print('NFC: Starting write operation...');
-            try {
-              await ndef.write(ndefMessage);
-              print('NFC: Write operation completed successfully');
-            } catch (writeEx) {
-              print('NFC: Write failed with error: $writeEx');
-              print('NFC: Error type: ${writeEx.runtimeType}');
-              // Convert io_exception to user-friendly message
-              if (writeEx.toString().contains('io_exception')) {
-                throw Exception('NFC kommunikationsfejl - hold telefonen stille på tagget i mindst 2 sekunder');
-              }
-              rethrow;
-            }
+            int retryCount = 0;
+            const maxRetries = 3;
+            bool writeSuccess = false;
 
-            writeCompleted = true;
-            print('NFC: Stopping session...');
-            await NfcManager.instance.stopSession();
-            print('NFC: Session stopped successfully');
-            _isWriting = false;
-          } catch (e) {
-            print('NFC write error in callback: $e');
-            writeError = e.toString();
-            _isWriting = false;
-            try {
-              await NfcManager.instance.stopSession(errorMessage: e.toString());
-            } catch (stopErr) {
-              print('NFC: Error stopping session: $stopErr');
+            while (retryCount < maxRetries && !writeSuccess) {
+              try {
+                if (retryCount > 0) {
+                  print('NFC: Retry attempt $retryCount...');
+                  // Small delay before retry
+                  await Future.delayed(const Duration(milliseconds: 100));
+                }
+
+                await ndef.write(ndefMessage);
+                print('NFC: Write operation completed successfully!');
+                writeSuccess = true;
+
+                // Verify write by reading back (optional, don't fail if this fails)
+                try {
+                  print('NFC: Verifying write by reading back...');
+                  final readBack = await ndef.read();
+                  if (readBack.records.isNotEmpty) {
+                    final payload = readBack.records.first.payload;
+                    // Skip language code byte(s) to get the text
+                    final langCodeLen = payload[0];
+                    final readText = utf8.decode(payload.sublist(1 + langCodeLen));
+                    print('NFC: Read back: $readText');
+                    if (readText == jsonString) {
+                      print('NFC: Verification successful!');
+                    } else {
+                      print('NFC: Warning - read back differs from written data');
+                    }
+                  }
+                } catch (readError) {
+                  print('NFC: Could not verify write (read failed): $readError');
+                  // Don't fail the write operation just because verification failed
+                }
+
+                if (!completer.isCompleted) completer.complete(true);
+
+              } catch (writeEx) {
+                retryCount++;
+                print('NFC: Write attempt $retryCount failed: $writeEx');
+                print('NFC: Error type: ${writeEx.runtimeType}');
+
+                final errorStr = writeEx.toString().toLowerCase();
+                final isIoError = errorStr.contains('io_exception') || errorStr.contains('ioexception');
+
+                // Only retry on io_exception, not on other errors
+                if (isIoError && retryCount < maxRetries) {
+                  print('NFC: Will retry write operation...');
+                  continue;
+                }
+
+                // Convert to user-friendly message
+                if (isIoError) {
+                  writeError = 'NFC kommunikationsfejl - hold telefonen helt stille på tagget under hele skrivningen';
+                } else if (errorStr.contains('taglost') || errorStr.contains('tag_lost') || errorStr.contains('tag lost')) {
+                  writeError = 'NFC tag mistet - hold telefonen stille på tagget i mindst 3 sekunder';
+                } else if (errorStr.contains('invalid_parameter')) {
+                  writeError = 'Ugyldig NFC operation - prøv igen';
+                } else {
+                  writeError = 'Skrivefejl: ${writeEx.toString()}';
+                }
+                if (!completer.isCompleted) completer.complete(false);
+              }
             }
+          } catch (e) {
+            print('NFC write callback error: $e');
+            writeError = e.toString();
+            if (!completer.isCompleted) completer.complete(false);
           }
+        },
+        onError: (error) async {
+          print('NFC session error: ${error.type} - ${error.message}');
+          writeError = 'NFC session fejl: ${error.message}';
+          if (!completer.isCompleted) completer.complete(false);
         },
       );
 
-      // Wait for write with timeout
-      int timeoutCounter = 0;
-      while (!writeCompleted && timeoutCounter < 30 && writeError == null) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        timeoutCounter++;
+      // Wait for completion with timeout (20 seconds for writing)
+      print('NFC: Waiting for tag to be scanned...');
+      bool result;
+      try {
+        result = await completer.future.timeout(
+          const Duration(seconds: 20),
+          onTimeout: () {
+            print('NFC: Timeout waiting for tag');
+            writeError = 'Timeout: Hold telefonen tæt på NFC tagget';
+            return false;
+          },
+        );
+      } finally {
+        // Always stop the session after we're done (success or failure)
+        await _stopSessionSafely();
       }
 
-      if (writeError != null) {
-        throw Exception(writeError);
+      _isWriting = false;
+
+      if (!result) {
+        throw Exception(writeError ?? 'NFC skrivning fejlede');
       }
 
-      if (!writeCompleted) {
-        _isWriting = false;
-        throw Exception('Timeout: Hold telefonen tæt på NFC tagget i mindst 2 sekunder');
-      }
+      print('NFC: writeEquipmentToTag returning success');
+      return true;
+
     } catch (e) {
       _isWriting = false;
+      await _stopSessionSafely();
       print('NFC write outer error: $e');
-      // Clean up the error message
       String errorMsg = e.toString().replaceAll('Exception:', '').trim();
       throw Exception(errorMsg);
+    }
+  }
+
+  // Safely stop NFC session
+  Future<void> _stopSessionSafely() async {
+    try {
+      await NfcManager.instance.stopSession();
+      print('NFC: Session stopped');
+    } catch (e) {
+      print('NFC: Error stopping session (may already be stopped): $e');
     }
   }
 

@@ -204,10 +204,44 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                     subtitle: const Text('Hold telefonen på tagget under skrivning'),
                   ),
                   if (errorText != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      errorText!,
-                      style: const TextStyle(color: Colors.red),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: errorText!.contains('Hold telefonen')
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: errorText!.contains('Hold telefonen')
+                              ? Colors.blue
+                              : Colors.red,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            errorText!.contains('Hold telefonen')
+                                ? Icons.nfc
+                                : Icons.error_outline,
+                            color: errorText!.contains('Hold telefonen')
+                                ? Colors.blue
+                                : Colors.red,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorText!,
+                              style: TextStyle(
+                                color: errorText!.contains('Hold telefonen')
+                                    ? Colors.blue[800]
+                                    : Colors.red[800],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
@@ -250,7 +284,12 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                         }
 
                         if (writeToTag) {
-                          await _nfcService.writeEquipmentToTag(
+                          // Show instruction to user
+                          setState(() {
+                            errorText = 'Hold telefonen på NFC tagget nu...';
+                          });
+
+                          final writeSuccess = await _nfcService.writeEquipmentToTag(
                             NFCEquipmentData(
                               id: tagNumber,
                               navn: '${maerkeController.text} - $tagNumber',
@@ -260,6 +299,10 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                               status: 'hjemme',
                             ),
                           );
+
+                          if (!writeSuccess) {
+                            throw Exception('NFC skrivning fejlede - prøv igen');
+                          }
                         }
 
                         await _dbService.addAffugter(newAffugter);
@@ -268,17 +311,41 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(writeToTag ? 'NFC-tag programmeret' : 'Udstyr oprettet'),
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Text(writeToTag ? 'NFC-tag programmeret og udstyr oprettet!' : 'Udstyr oprettet'),
+                                ],
+                              ),
                               backgroundColor: Colors.green,
+                              duration: const Duration(seconds: 3),
                             ),
                           );
                           _searchEquipment(tagNumber);
                         }
                       } catch (e) {
+                        String errorMsg = e.toString().replaceAll('Exception:', '').trim();
                         setState(() {
-                          errorText = e.toString();
+                          errorText = errorMsg;
                           isSaving = false;
                         });
+                        // Also show SnackBar so error is visible even if dialog is dismissed
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.error_outline, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(errorMsg)),
+                                ],
+                              ),
+                              backgroundColor: Colors.red[700],
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+                        }
                       }
                     },
               child: isSaving

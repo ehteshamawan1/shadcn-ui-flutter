@@ -30,7 +30,7 @@ class NFCService {
   }
 
   // Write equipment data to NFC tag
-  Future<void> writeEquipmentToTag(NFCEquipmentData equipmentData) async {
+  Future<bool> writeEquipmentToTag(NFCEquipmentData equipmentData) async {
     throw Exception('NFC skrivning er ikke tilgængelig på web platform');
   }
 
