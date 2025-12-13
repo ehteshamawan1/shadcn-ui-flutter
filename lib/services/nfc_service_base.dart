@@ -22,15 +22,21 @@ class NFCData {
     this.status,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type,
-        'navn': navn,
-        'placering': placering,
-        'data': data,
-        'sagId': sagId,
-        'status': status,
-      };
+  Map<String, dynamic> toJson() {
+    // Only include non-null values to minimize NFC tag data size
+    final map = <String, dynamic>{
+      'id': id,
+      'type': type,
+    };
+
+    if (navn != null) map['navn'] = navn;
+    if (placering != null) map['placering'] = placering;
+    if (data != null) map['data'] = data;
+    if (sagId != null) map['sagId'] = sagId;
+    if (status != null) map['status'] = status;
+
+    return map;
+  }
 
   factory NFCData.fromJson(Map<String, dynamic> json) {
     // Handle both old format ('equipment') and new compact format ('eq')

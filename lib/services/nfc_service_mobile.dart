@@ -376,4 +376,14 @@ class NFCService {
 
   // Check if currently writing
   bool get isWriting => _isWriting;
+
+  // Reset write state - call this when an error occurs and user wants to retry
+  void resetWriteState() {
+    _isWriting = false;
+  }
+
+  // Reset scan state - call this when an error occurs and user wants to retry
+  void resetScanState() {
+    _isScanning = false;
+  }
 }

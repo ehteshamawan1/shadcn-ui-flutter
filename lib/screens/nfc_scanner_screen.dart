@@ -136,6 +136,52 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // ERROR DISPLAY AT TOP - more visible to user
+                  if (errorText != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: errorText!.contains('Hold telefonen')
+                            ? Colors.blue.shade50
+                            : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: errorText!.contains('Hold telefonen')
+                              ? Colors.blue
+                              : Colors.red,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            errorText!.contains('Hold telefonen')
+                                ? Icons.nfc
+                                : Icons.error,
+                            color: errorText!.contains('Hold telefonen')
+                                ? Colors.blue
+                                : Colors.red,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              errorText!,
+                              style: TextStyle(
+                                color: errorText!.contains('Hold telefonen')
+                                    ? Colors.blue.shade800
+                                    : Colors.red.shade800,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   TextFormField(
                     controller: tagIdController,
                     decoration: const InputDecoration(
@@ -203,47 +249,6 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                     title: const Text('Skriv til NFC-tag nu'),
                     subtitle: const Text('Hold telefonen på tagget under skrivning'),
                   ),
-                  if (errorText != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: errorText!.contains('Hold telefonen')
-                            ? Colors.blue.withValues(alpha: 0.1)
-                            : Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: errorText!.contains('Hold telefonen')
-                              ? Colors.blue
-                              : Colors.red,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            errorText!.contains('Hold telefonen')
-                                ? Icons.nfc
-                                : Icons.error_outline,
-                            color: errorText!.contains('Hold telefonen')
-                                ? Colors.blue
-                                : Colors.red,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              errorText!,
-                              style: TextStyle(
-                                color: errorText!.contains('Hold telefonen')
-                                    ? Colors.blue[800]
-                                    : Colors.red[800],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -326,26 +331,16 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                         }
                       } catch (e) {
                         String errorMsg = e.toString().replaceAll('Exception:', '').trim();
+
+                        // Reset NFC service state to allow retry
+                        _nfcService.resetWriteState();
+
                         setState(() {
                           errorText = errorMsg;
                           isSaving = false;
                         });
-                        // Also show SnackBar so error is visible even if dialog is dismissed
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(Icons.error_outline, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: Text(errorMsg)),
-                                ],
-                              ),
-                              backgroundColor: Colors.red[700],
-                              duration: const Duration(seconds: 5),
-                            ),
-                          );
-                        }
+                        // Error is now displayed prominently at the TOP of the dialog
+                        // No SnackBar needed - it would appear BEHIND the dialog
                       }
                     },
               child: isSaving
@@ -366,7 +361,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Udstyr'),
+        title: const Text('Scannet NFC Tag'),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,6 +381,15 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Luk'),
           ),
+          // Search in database button
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _searchAndShowDatabaseDetails(nfcData.id);
+            },
+            icon: const Icon(Icons.search),
+            label: const Text('Søg i database'),
+          ),
           if (widget.sagId != null)
             ElevatedButton(
               onPressed: () {
@@ -395,6 +399,83 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                 );
               },
               child: const Text('Tilknyt sag'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _searchAndShowDatabaseDetails(String equipmentId) {
+    try {
+      final allAffugtere = _dbService.getAllAffugtere();
+      final affugter = allAffugtere.firstWhere(
+        (a) => a.nr == equipmentId,
+        orElse: () => throw Exception('Udstyr ikke fundet i database'),
+      );
+
+      // Show full database details
+      _showDatabaseEquipmentDialog(affugter);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception:', '').trim()),
+            backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: 'Opret nyt',
+              onPressed: () => _showCreateNewTagDialog(equipmentId),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDatabaseEquipmentDialog(Affugter affugter) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.inventory_2, color: Colors.green[700]),
+            const SizedBox(width: 8),
+            const Text('Database Detaljer'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Nr', affugter.nr),
+              _buildDetailRow('Type', affugter.type),
+              _buildDetailRow('Mærke', affugter.maerke),
+              if (affugter.model != null) _buildDetailRow('Model', affugter.model!),
+              _buildDetailRow('Status', affugter.status),
+              if (affugter.currentSagId != null)
+                _buildDetailRow('Tilknyttet Sag', affugter.currentSagId!),
+              if (affugter.serie != null)
+                _buildDetailRow('Serienummer', affugter.serie!),
+              if (affugter.note != null)
+                _buildDetailRow('Note', affugter.note!),
+              _buildDetailRow('Oprettet', affugter.createdAt.substring(0, 10)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Luk'),
+          ),
+          if (widget.sagId != null && affugter.status == 'hjemme')
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Udstyr tilknyttet sag ${widget.sagId}')),
+                );
+              },
+              child: const Text('Tilknyt til sag'),
             ),
         ],
       ),
