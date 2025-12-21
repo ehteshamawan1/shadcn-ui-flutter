@@ -16,6 +16,8 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_typography.dart';
+import '../widgets/attention_badge.dart';
+import '../widgets/responsive_builder.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/ui/ska_badge.dart';
 import '../widgets/ui/ska_button.dart';
@@ -406,19 +408,14 @@ class _SagerScreenState extends State<SagerScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          _buildHeader(
-            isAdmin: isAdmin,
-            canCreateSager: canCreateSager,
-            activeCount: activeCount,
-            archivedCount: archivedCount,
-          ),
+          _buildHeader(isAdmin: isAdmin, activeCount: activeCount, archivedCount: archivedCount),
           Expanded(
             child: ListView(
               padding: AppSpacing.p4,
               children: [
                 if (_syncError != null) _buildSyncErrorBanner(_syncError!),
                 if (_isSyncing) _buildSyncingBanner(),
-                _buildFilters(),
+                _buildFilters(attentionIds: attentionIds),
                 if (!_showArchived && stats['total']! > 0) ...[
                   const SizedBox(height: AppSpacing.s4),
                   _buildStatsGrid(stats: stats, showAttention: isAdmin),
@@ -451,12 +448,7 @@ class _SagerScreenState extends State<SagerScreen> {
     );
   }
 
-  Widget _buildHeader({
-    required bool isAdmin,
-    required bool canCreateSager,
-    required int activeCount,
-    required int archivedCount,
-  }) {
+  Widget _buildHeader({required bool isAdmin, required int activeCount, required int archivedCount}) {
     final titleText = _isSelectionMode
         ? '${_selectedSagerIds.length} valgt'
         : 'Sager';
@@ -467,7 +459,7 @@ class _SagerScreenState extends State<SagerScreen> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.background,
-        border: Border(
+        border: const Border(
           bottom: BorderSide(color: AppColors.border, width: 1),
         ),
         boxShadow: AppShadows.shadowSm,
@@ -498,7 +490,7 @@ class _SagerScreenState extends State<SagerScreen> {
                   children: [
                     Text(
                       titleText,
-                      style: AppTypography.xlBold.copyWith(
+                      style: AppTypography.xlSemibold.copyWith(
                         color: AppColors.foreground,
                       ),
                     ),
@@ -515,7 +507,7 @@ class _SagerScreenState extends State<SagerScreen> {
                         if (_attentionCount > 0 && !_showArchived) ...[
                           const SizedBox(width: 8),
                           Text(
-                            '- $_attentionCount krAÝver opmAÝrksomhed',
+                            '\u00187 $_attentionCount krAÝver opmAÝrksomhed',
                             style: AppTypography.smMedium.copyWith(
                               color: AppColors.warning,
                             ),
@@ -717,7 +709,7 @@ class _SagerScreenState extends State<SagerScreen> {
     );
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters({required Set<String> attentionIds}) {
     final hasActiveFilters = _selectedType != 'alle' || _selectedRegion != 'alle' || _showOnlyNeedsAttention || _searchQuery.isNotEmpty;
 
     return Column(
@@ -744,7 +736,7 @@ class _SagerScreenState extends State<SagerScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.filter_list, size: 16, color: AppColors.mutedForeground),
+                const Icon(Icons.filter_list, size: 16, color: AppColors.mutedForeground),
                 const SizedBox(width: 6),
                 Text(
                   'Filtre:',
@@ -814,11 +806,11 @@ class _SagerScreenState extends State<SagerScreen> {
               contentPadding: AppSpacing.symmetric(horizontal: AppSpacing.s3, vertical: AppSpacing.s2),
               border: OutlineInputBorder(
                 borderRadius: AppRadius.radiusMd,
-                borderSide: BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: AppRadius.radiusMd,
-                borderSide: BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
             ),
             items: options
@@ -986,7 +978,7 @@ class _SagerScreenState extends State<SagerScreen> {
       return SkaCard(
         child: Column(
           children: [
-            Icon(Icons.description, size: 48, color: AppColors.mutedForeground),
+            const Icon(Icons.description, size: 48, color: AppColors.mutedForeground),
             const SizedBox(height: AppSpacing.s3),
             Text(
               _showArchived
@@ -1117,7 +1109,7 @@ class _SagerScreenState extends State<SagerScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.location_on, size: 14, color: AppColors.mutedForeground),
+                            const Icon(Icons.location_on, size: 14, color: AppColors.mutedForeground),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -1383,7 +1375,7 @@ class _SagerScreenState extends State<SagerScreen> {
       children: [
         Row(
           children: [
-            Icon(Icons.calendar_today, size: 14, color: AppColors.mutedForeground),
+            const Icon(Icons.calendar_today, size: 14, color: AppColors.mutedForeground),
             const SizedBox(width: 6),
             Text(
               'Oprettet: ${_formatDate(createdAt)}',
@@ -1399,7 +1391,7 @@ class _SagerScreenState extends State<SagerScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.archive, size: 14, color: AppColors.mutedForeground),
+                  const Icon(Icons.archive, size: 14, color: AppColors.mutedForeground),
                   const SizedBox(width: 4),
                   Text(
                     'Arkiveret: ${_formatDate(sag.arkiveretDato!)}',

@@ -38,13 +38,19 @@ class SagAdapter extends TypeAdapter<Sag> {
       opdateretDato: fields[18] as String,
       createdAt: fields[19] as String?,
       updatedAt: fields[20] as String?,
+      needsAttention: fields[21] as bool?,
+      attentionNote: fields[22] as String?,
+      attentionAcknowledgedAt: fields[23] as String?,
+      attentionAcknowledgedBy: fields[24] as String?,
+      postnummer: fields[25] as String?,
+      by: fields[26] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Sag obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(27)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +92,19 @@ class SagAdapter extends TypeAdapter<Sag> {
       ..writeByte(19)
       ..write(obj.createdAt)
       ..writeByte(20)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(21)
+      ..write(obj.needsAttention)
+      ..writeByte(22)
+      ..write(obj.attentionNote)
+      ..writeByte(23)
+      ..write(obj.attentionAcknowledgedAt)
+      ..writeByte(24)
+      ..write(obj.attentionAcknowledgedBy)
+      ..writeByte(25)
+      ..write(obj.postnummer)
+      ..writeByte(26)
+      ..write(obj.by);
   }
 
   @override

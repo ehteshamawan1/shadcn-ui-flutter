@@ -3,7 +3,12 @@ import 'package:intl/intl.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
 import '../models/kostpris.dart';
-import '../providers/theme_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 
 /// Admin screen for managing cost prices (Kostpriser) and default sales prices
 /// Only accessible to admin users
@@ -20,19 +25,11 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
   late TabController _tabController;
   bool _isLoading = true;
   List<Kostpris> _kostpriser = [];
-  String _selectedGroup = 'Timer';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {
-          _selectedGroup = ['Timer', 'Udstyr', 'Blokke', 'Overhead'][_tabController.index];
-        });
-      }
-    });
     _loadData();
   }
 
@@ -76,26 +73,20 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            SkaInput(
+              label: 'Kostpris (DKK)',
+              helper: 'Intern omkostning - kun synlig for admin',
               controller: kostprisController,
-              decoration: const InputDecoration(
-                labelText: 'Kostpris (DKK)',
-                helperText: 'Intern omkostning - kun synlig for admin',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock),
-              ),
               keyboardType: TextInputType.number,
+              prefixIcon: const Icon(Icons.lock),
             ),
             const SizedBox(height: 16),
-            TextField(
+            SkaInput(
+              label: 'Salgspris (DKK)',
+              helper: 'Standard salgspris paa fakturaer',
               controller: salgsprisController,
-              decoration: const InputDecoration(
-                labelText: 'Salgspris (DKK)',
-                helperText: 'Standard salgspris på fakturaer',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.receipt),
-              ),
               keyboardType: TextInputType.number,
+              prefixIcon: const Icon(Icons.receipt),
             ),
             const SizedBox(height: 16),
             // Show calculated margin
@@ -135,17 +126,15 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
           ],
         ),
         actions: [
-          TextButton(
+          SkaButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuller'),
+            variant: ButtonVariant.ghost,
+            text: 'Annuller',
           ),
-          ElevatedButton(
+          SkaButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Gem'),
+            variant: ButtonVariant.primary,
+            text: 'Gem',
           ),
         ],
       ),
@@ -180,9 +169,6 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kostpriser Administration'),
@@ -273,29 +259,23 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
 
   Widget _buildSummaryCard(String label, String value, Color color, IconData icon) {
     return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      child: SkaCard(
+        padding: AppSpacing.p4,
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: AppTypography.xs.copyWith(color: AppColors.mutedForeground)),
+                Text(
+                  value,
+                  style: AppTypography.lgSemibold.copyWith(color: color),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -342,125 +322,119 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
                       : margin >= 15 ? Colors.orange
                       : Colors.red;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => _editKostpris(pris),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _getIconForCategory(pris.category),
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 16),
+    return SkaCard(
+      padding: AppSpacing.p4,
+      onTap: () => _editKostpris(pris),
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getIconForCategory(pris.category),
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 16),
 
-              // Name
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      pris.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      pris.category,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
+          // Name
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  pris.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-              ),
-
-              // Cost price (admin only)
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.lock, size: 12, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatCurrency(pris.kostpris),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'Kostpris',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                    ),
-                  ],
+                Text(
+                  pris.category,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
-              ),
-              const SizedBox(width: 12),
+              ],
+            ),
+          ),
 
-              // Sales price
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+          // Cost price (admin only)
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Icon(Icons.lock, size: 12, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
                     Text(
-                      _formatCurrency(pris.salgspris),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                      _formatCurrency(pris.kostpris),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
                       ),
                     ),
-                    Text(
-                      'Salgspris',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                    ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-
-              // Margin
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: marginColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                Text(
+                  'Kostpris',
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                 ),
-                child: Text(
-                  '${margin.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    color: marginColor,
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Sales price
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _formatCurrency(pris.salgspris),
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: 14,
                   ),
                 ),
-              ),
-
-              // Edit button
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => _editKostpris(pris),
-                tooltip: 'Rediger',
-              ),
-            ],
+                Text(
+                  'Salgspris',
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+
+          // Margin
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: marginColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${margin.toStringAsFixed(0)}%',
+              style: TextStyle(
+                color: marginColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+
+          // Edit button
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => _editKostpris(pris),
+            tooltip: 'Rediger',
+          ),
+        ],
       ),
     );
   }
@@ -514,9 +488,10 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
           ],
         ),
         actions: [
-          TextButton(
+          SkaButton(
+            text: 'Luk',
+            variant: ButtonVariant.secondary,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Luk'),
           ),
         ],
       ),

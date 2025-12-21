@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../providers/theme_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import 'ui/ska_card.dart';
 
 /// Filter option for dropdowns and chips
 class FilterOption {
@@ -96,33 +99,25 @@ class FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                ...filters.map((filter) => _buildFilter(context, filter)),
-                if (showResetButton && _hasActiveFilters)
-                  TextButton.icon(
-                    onPressed: onReset,
-                    icon: const Icon(Icons.clear_all, size: 18),
-                    label: const Text('Nulstil'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.grey[600],
-                    ),
-                  ),
-              ],
+    return SkaCard(
+      padding: padding,
+      child: Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ...filters.map((filter) => _buildFilter(context, filter)),
+          if (showResetButton && _hasActiveFilters)
+            TextButton.icon(
+              onPressed: onReset,
+              icon: const Icon(Icons.clear_all, size: 18),
+              label: const Text('Nulstil'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.mutedForeground,
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -205,14 +200,14 @@ class _SearchFilterState extends State<_SearchFilter> {
       child: TextField(
         controller: _controller,
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search, size: 20),
+          prefixIcon: Icon(Icons.search, size: 18, color: AppColors.mutedForeground),
           hintText: widget.config.hint ?? 'Søg...',
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          contentPadding: AppSpacing.symmetric(horizontal: AppSpacing.s3, vertical: AppSpacing.s2),
           border: const OutlineInputBorder(),
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18),
+                  icon: Icon(Icons.clear, size: 18, color: AppColors.mutedForeground),
                   onPressed: () {
                     _controller.clear();
                     widget.onChanged('');
@@ -256,7 +251,7 @@ class _DropdownFilter extends StatelessWidget {
         decoration: InputDecoration(
           labelText: config.label,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          contentPadding: AppSpacing.symmetric(horizontal: AppSpacing.s3, vertical: AppSpacing.s2),
           border: const OutlineInputBorder(),
         ),
         items: allOptions.map((opt) {
@@ -326,8 +321,8 @@ class _ChipFilter extends StatelessWidget {
                   : null,
               backgroundColor: opt.color?.withValues(alpha: 0.1),
               selectedColor: opt.color ?? Theme.of(context).colorScheme.primary,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : null,
+              labelStyle: AppTypography.xs.copyWith(
+                color: isSelected ? AppColors.primaryForeground : AppColors.foreground,
               ),
             ),
           );
@@ -407,7 +402,7 @@ class _TristateFilter extends StatelessWidget {
                   color: value == yesOption.value
                       ? AppColors.success
                       : value == noOption?.value
-                          ? Colors.orange
+                          ? AppColors.warning
                           : null,
                 ),
               ),
@@ -419,10 +414,7 @@ class _TristateFilter extends StatelessWidget {
                       : value == noOption?.value
                           ? '(${noOption?.count ?? 0})'
                           : '(${(yesOption.count ?? 0) + (noOption?.count ?? 0)})',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                 ),
               ],
             ],
@@ -464,7 +456,7 @@ class SummaryCardsFilter extends StatelessWidget {
                   label: allLabel,
                   count: totalCount ?? options.fold<int>(0, (sum, opt) => sum + (opt.count ?? 0)),
                   icon: Icons.apps,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: AppColors.primary,
                 ),
               ]
             : options;
@@ -507,7 +499,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardWidth = ((maxWidth - (12 * (cardCount - 1))) / cardCount).clamp(100.0, 180.0);
-    final color = option.color ?? Theme.of(context).colorScheme.primary;
+    final color = option.color ?? AppColors.primary;
 
     return InkWell(
       onTap: onTap,
@@ -518,10 +510,10 @@ class _SummaryCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? color.withValues(alpha: 0.15)
-              : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              : AppColors.backgroundSecondary,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : Colors.transparent,
+            color: isSelected ? color : AppColors.border,
             width: 2,
           ),
         ),
@@ -583,9 +575,7 @@ class FilterResultsHeader extends StatelessWidget {
         children: [
           Text(
             '$resultCount $itemLabel${filterText.isNotEmpty ? ' ($filterText)' : ''}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
           ),
           if (activeFilters.isNotEmpty && onReset != null) ...[
             const Spacer(),

@@ -2,24 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart' as theme_colors;
+import '../theme/app_theme.dart';
 
-/// Centralized app colors - all colors should be defined here
+/// Legacy AppColors class for backwards compatibility
+/// Uses the new theme system internally
 class AppColors {
   AppColors._();
 
   // Primary brand color
-  static const primary = Color(0xFF2563EB); // blue-600
+  static const primary = theme_colors.AppColors.primary;
 
   // Status colors
-  static const success = Color(0xFF16A34A); // green-600
-  static const warning = Color(0xFFF59E0B); // amber-500
-  static const error = Color(0xFFDC2626); // red-600
+  static const success = theme_colors.AppColors.success;
+  static const warning = theme_colors.AppColors.warning;
+  static const error = theme_colors.AppColors.error;
   static const info = Color(0xFF0EA5E9); // sky-500
 
   // Equipment status
-  static const statusHjemme = Color(0xFF16A34A); // green
-  static const statusUdlejet = Color(0xFF2563EB); // blue
-  static const statusDefekt = Color(0xFFDC2626); // red
+  static const statusHjemme = theme_colors.AppColors.success;
+  static const statusUdlejet = theme_colors.AppColors.primary;
+  static const statusDefekt = theme_colors.AppColors.error;
 
   // Sag types
   static const typeUdtorring = Color(0xFF1D4ED8); // blue-700
@@ -39,8 +42,8 @@ class AppColors {
   static const slate950 = Color(0xFF020617);
 
   // Light theme specific
-  static const lightBorder = Color(0xFFE5E7EB); // gray-200
-  static const lightMuted = Color(0xFF6B7280); // gray-500
+  static Color get lightBorder => theme_colors.AppColors.border;
+  static Color get lightMuted => theme_colors.AppColors.mutedForeground;
 
   /// Get status color for equipment
   static Color getEquipmentStatusColor(String status) {
@@ -113,90 +116,36 @@ class ThemeProvider extends ChangeNotifier {
     }
 
     _themeMode = themeModeString == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    theme_colors.AppColors.setBrightness(
+      _themeMode == ThemeMode.dark ? Brightness.dark : Brightness.light,
+    );
     notifyListeners();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
+    theme_colors.AppColors.setBrightness(
+      _themeMode == ThemeMode.dark ? Brightness.dark : Brightness.light,
+    );
+    notifyListeners();
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _prefKeyForCurrentUser(),
       mode == ThemeMode.dark ? 'dark' : 'light',
     );
-    notifyListeners();
   }
 
   Future<void> reloadForCurrentUser() async {
     await _loadThemeMode();
   }
 
-  static final lightTheme = ThemeData(
-    useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.light,
-    ),
-    textTheme: GoogleFonts.interTextTheme(),
-  );
+  // Use the new comprehensive theme system matching React app
+  static ThemeData get lightTheme => AppTheme.lightTheme.copyWith(
+        textTheme: GoogleFonts.interTextTheme(AppTheme.lightTheme.textTheme),
+      );
 
-  // Shadcn-ui dark theme colors (Tailwind slate)
-  static final darkTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.dark,
-      surface: AppColors.slate900,
-      onSurface: AppColors.slate50,
-    ),
-    scaffoldBackgroundColor: AppColors.slate950,
-    cardColor: AppColors.slate900,
-    dividerColor: AppColors.slate800,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.slate900,
-      foregroundColor: AppColors.slate50,
-    ),
-    dialogTheme: const DialogThemeData(
-      backgroundColor: AppColors.slate900,
-    ),
-    cardTheme: CardThemeData(
-      color: AppColors.slate900,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.slate800),
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: AppColors.slate800,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.slate700),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.slate700),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-      ),
-    ),
-    chipTheme: const ChipThemeData(
-      backgroundColor: AppColors.slate800,
-      selectedColor: AppColors.primary,
-      side: BorderSide(color: AppColors.slate700),
-    ),
-    popupMenuTheme: const PopupMenuThemeData(
-      color: AppColors.slate900,
-    ),
-    dropdownMenuTheme: const DropdownMenuThemeData(
-      menuStyle: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(AppColors.slate900),
-      ),
-    ),
-    textTheme: GoogleFonts.interTextTheme(
-      ThemeData.dark().textTheme,
-    ),
-  );
+  static ThemeData get darkTheme => AppTheme.darkTheme.copyWith(
+        textTheme: GoogleFonts.interTextTheme(AppTheme.darkTheme.textTheme),
+      );
 }

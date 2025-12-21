@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
-import '../services/database_service.dart';
 import '../models/affugter.dart';
-import '../providers/theme_provider.dart';
+import '../services/database_service.dart';
+import '../providers/theme_provider.dart' as legacy_colors;
+import '../theme/app_colors.dart' as theme_colors;
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../widgets/filter_widget.dart';
+import '../widgets/ui/ska_badge.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
+import '../widgets/theme_toggle.dart';
 
-class UdstyrsOversightScreen extends StatefulWidget {
-  const UdstyrsOversightScreen({super.key});
+class UdstyrsOversigtScreen extends StatefulWidget {
+  const UdstyrsOversigtScreen({super.key});
 
   @override
-  State<UdstyrsOversightScreen> createState() => _UdstyrsOversightScreenState();
+  State<UdstyrsOversigtScreen> createState() => _UdstyrsOversigtScreenState();
 }
 
-class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
+class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
   final _dbService = DatabaseService();
   late List<Affugter> _affugtere;
   String _filterStatus = 'alle';
   bool _loading = true;
-
-  final List<String> _statuses = ['alle', 'hjemme', 'udlejet', 'defekt'];
 
   @override
   void initState() {
@@ -45,11 +51,11 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'hjemme':
-        return AppColors.statusHjemme;
+        return legacy_colors.AppColors.statusHjemme;
       case 'udlejet':
-        return AppColors.statusUdlejet;
+        return legacy_colors.AppColors.statusUdlejet;
       case 'defekt':
-        return AppColors.statusDefekt;
+        return legacy_colors.AppColors.statusDefekt;
       default:
         return Colors.grey;
     }
@@ -60,7 +66,7 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Slet udstyr'),
-        content: const Text('Er du sikker på, at du vil slette dette udstyr?'),
+        content: const Text('Er du sikker paa, at du vil slette dette udstyr?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -106,81 +112,60 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEdit ? 'Rediger udstyr' : 'Tilføj udstyr'),
+          title: Text(isEdit ? 'Rediger udstyr' : 'Tilfoej udstyr'),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextFormField(
+                  SkaInput(
+                    label: 'Nummer *',
+                    placeholder: '2-0001',
                     controller: nrController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nummer *',
-                      hintText: '2-0001',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => v?.isEmpty == true ? 'Påkrævet' : null,
+                    validator: (v) => v?.isEmpty == true ? 'Paakraevet' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.s4),
                   DropdownButtonFormField<String>(
                     value: selectedType,
-                    decoration: const InputDecoration(
-                      labelText: 'Type *',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Type *'),
                     items: types
                         .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                         .toList(),
                     onChanged: (v) => setDialogState(() => selectedType = v!),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.s4),
                   DropdownButtonFormField<String>(
                     value: selectedMaerke,
-                    decoration: const InputDecoration(
-                      labelText: 'Mærke *',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Maerke *'),
                     items: maerker
                         .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                         .toList(),
                     onChanged: (v) => setDialogState(() => selectedMaerke = v!),
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
+                  const SizedBox(height: AppSpacing.s4),
+                  SkaInput(
+                    label: 'Model',
                     controller: modelController,
-                    decoration: const InputDecoration(
-                      labelText: 'Model',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
+                  const SizedBox(height: AppSpacing.s4),
+                  SkaInput(
+                    label: 'Serienummer',
                     controller: serieController,
-                    decoration: const InputDecoration(
-                      labelText: 'Serienummer',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.s4),
                   DropdownButtonFormField<String>(
                     value: selectedStatus,
-                    decoration: const InputDecoration(
-                      labelText: 'Status *',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Status *'),
                     items: ['hjemme', 'udlejet', 'defekt']
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),
                     onChanged: (v) => setDialogState(() => selectedStatus = v!),
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
+                  const SizedBox(height: AppSpacing.s4),
+                  SkaInput(
+                    label: 'Note',
                     controller: noteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Note',
-                      border: OutlineInputBorder(),
-                    ),
                     maxLines: 3,
                   ),
                 ],
@@ -188,11 +173,12 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
             ),
           ),
           actions: [
-            TextButton(
+            SkaButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Annuller'),
+              variant: ButtonVariant.ghost,
+              text: 'Annuller',
             ),
-            ElevatedButton(
+            SkaButton(
               onPressed: () async {
                 if (formKey.currentState?.validate() == true) {
                   final now = DateTime.now().toIso8601String();
@@ -220,18 +206,51 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
                     _loadAffugtere();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isEdit ? 'Udstyr opdateret' : 'Udstyr tilføjet'),
+                        content: Text(isEdit ? 'Udstyr opdateret' : 'Udstyr tilfoejet'),
                       ),
                     );
                   }
                 }
               },
-              child: Text(isEdit ? 'Opdater' : 'Tilføj'),
+              variant: ButtonVariant.primary,
+              text: isEdit ? 'Opdater' : 'Tilfoej',
             ),
           ],
         ),
       ),
     );
+  }
+
+  List<_RangeGroup> get _rangeGroups {
+    final Map<String, _RangeGroup> groups = {};
+    for (final affugter in _affugtere) {
+      final range = _parseRange(affugter.nr);
+      if (range == null) continue;
+      final label = '${range.start}-${range.end}';
+      groups.update(
+        label,
+        (existing) => existing.copyWith(count: existing.count + 1),
+        ifAbsent: () => _RangeGroup(label: label, count: 1),
+      );
+    }
+
+    final result = groups.values.toList();
+    result.sort((a, b) => b.count.compareTo(a.count));
+    return result;
+  }
+
+  _NumberRange? _parseRange(String input) {
+    final match = RegExp(r'^(\d+)\s*-\s*(\d+)$').firstMatch(input.trim());
+    if (match == null) return null;
+    final startText = match.group(1)!;
+    final endText = match.group(2)!;
+    if (startText.length != endText.length || startText.length < 2) {
+      return null;
+    }
+    final start = int.tryParse(startText);
+    final end = int.tryParse(endText);
+    if (start == null || end == null || end <= start) return null;
+    return _NumberRange(start: start, end: end);
   }
 
   @override
@@ -242,16 +261,21 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
       );
     }
 
+    final ranges = _rangeGroups;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Udstyr Oversigt'),
+        title: const Text('Udstyr oversigt'),
         elevation: 0,
+        actions: const [
+          ThemeToggle(),
+          SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [
-          // Standardized Filter Bar with Chips
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: AppSpacing.p4,
             child: FilterBar(
               filters: [
                 FilterConfig(
@@ -277,8 +301,6 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
               },
             ),
           ),
-
-          // Results Header
           FilterResultsHeader(
             resultCount: _affugtere.length,
             itemLabel: 'udstyr',
@@ -292,8 +314,32 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
                   }
                 : null,
           ),
-
-          // List
+          if (ranges.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SkaCard(
+                padding: AppSpacing.p4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Range analyse', style: AppTypography.smSemibold),
+                    const SizedBox(height: AppSpacing.s2),
+                    Wrap(
+                      spacing: AppSpacing.s2,
+                      runSpacing: AppSpacing.s2,
+                      children: ranges
+                          .map(
+                            (range) => SkaBadge(
+                              text: '${range.label} (${range.count})',
+                              variant: BadgeVariant.secondary,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Expanded(
             child: _affugtere.isEmpty
                 ? Center(
@@ -304,7 +350,7 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
                         const SizedBox(height: 16),
                         const Text('Ingen udstyr fundet', style: TextStyle(fontSize: 18)),
                         const SizedBox(height: 8),
-                        const Text('Klik på + for at tilføje udstyr'),
+                        const Text('Klik paa + for at tilfoeje udstyr'),
                       ],
                     ),
                   )
@@ -313,78 +359,7 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
                     itemCount: _affugtere.length,
                     itemBuilder: (context, index) {
                       final affugter = _affugtere[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.inventory_2, color: AppColors.primary),
-                              title: Text(
-                                '${affugter.maerke} - ${affugter.nr}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text('Type: ${affugter.type}'),
-                                  if (affugter.model != null)
-                                    Text('Model: ${affugter.model}'),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Chip(
-                                    label: Text(affugter.status),
-                                    backgroundColor:
-                                        _getStatusColor(affugter.status).withValues(alpha: 0.2),
-                                    labelStyle: TextStyle(
-                                      color: _getStatusColor(affugter.status),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, size: 20),
-                                    onPressed: () => _showAffugterDialog(affugter),
-                                    color: AppColors.primary,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                                    onPressed: () => _deleteAffugter(affugter.id),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (affugter.serie != null || affugter.note != null)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (affugter.serie != null)
-                                      Text(
-                                        'Serie: ${affugter.serie}',
-                                        style: TextStyle(color: Colors.grey[600]),
-                                      ),
-                                    if (affugter.note != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        affugter.note!,
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
+                      return _buildAffugterCard(affugter);
                     },
                   ),
           ),
@@ -396,4 +371,83 @@ class _UdstyrsOversightScreenState extends State<UdstyrsOversightScreen> {
       ),
     );
   }
+
+  Widget _buildAffugterCard(Affugter affugter) {
+    final statusColor = _getStatusColor(affugter.status);
+
+    return SkaCard(
+      padding: AppSpacing.p4,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.inventory_2_outlined, color: statusColor, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.s4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${affugter.maerke} - ${affugter.nr}',
+                  style: AppTypography.smSemibold,
+                ),
+                const SizedBox(height: AppSpacing.s1),
+                Text('Type: ${affugter.type}', style: AppTypography.xs.copyWith(color: theme_colors.AppColors.mutedForeground)),
+                if (affugter.model != null)
+                  Text('Model: ${affugter.model}', style: AppTypography.xs.copyWith(color: theme_colors.AppColors.mutedForeground)),
+                if (affugter.serie != null)
+                  Text('Serie: ${affugter.serie}', style: AppTypography.xs.copyWith(color: theme_colors.AppColors.mutedForeground)),
+                if (affugter.note != null)
+                  Text(affugter.note!, style: AppTypography.xs.copyWith(color: theme_colors.AppColors.mutedForeground)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SkaBadge.status(text: affugter.status, status: affugter.status, small: true),
+              const SizedBox(height: AppSpacing.s2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    onPressed: () => _showAffugterDialog(affugter),
+                    color: theme_colors.AppColors.primary,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                    onPressed: () => _deleteAffugter(affugter.id),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NumberRange {
+  final int start;
+  final int end;
+
+  const _NumberRange({required this.start, required this.end});
+}
+
+class _RangeGroup {
+  final String label;
+  final int count;
+
+  const _RangeGroup({required this.label, required this.count});
+
+  _RangeGroup copyWith({int? count}) => _RangeGroup(label: label, count: count ?? this.count);
 }

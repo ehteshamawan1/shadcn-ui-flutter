@@ -39,6 +39,9 @@ class SyncService {
   // Callbacks for notifying UI of real-time changes
   final List<void Function(String entityType, String action, Map<String, dynamic> data)> _realtimeListeners = [];
 
+  // Stream controller for sync status updates (Phase 2)
+  final StreamController<bool> _syncStatusController = StreamController<bool>.broadcast();
+
   Future<void> init() async {
     if (_initialized) return;
 
@@ -51,12 +54,9 @@ class SyncService {
     // Lyt på connectivity og sync når vi kommer online
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
       (status) async {
+        _syncStatusController.add(_isSyncing);
         if (_isOnline(status)) {
-          await syncPending();
-          // Subscribe to real-time when online
-          if (!_realtimeSubscribed) {
-            await _subscribeToRealtime();
-          }
+          await _syncOnReconnect();
         }
       },
     );
@@ -67,6 +67,7 @@ class SyncService {
       await pullFromRemote(); // hent først
       await syncPending(); // skub derefter
       await _subscribeToRealtime(); // start real-time
+      _syncStatusController.add(_isSyncing);
     }
   }
 
@@ -75,14 +76,58 @@ class SyncService {
     _remoteClient.removeChangeCallback(_handleRealtimeChange);
     _remoteClient.dispose();
     _realtimeListeners.clear();
+    _syncStatusController.close();
   }
 
   bool get hasPending => (_queueBox?.isNotEmpty ?? false);
   bool get isInitialSyncComplete => _initialSyncComplete;
   bool get isRealtimeActive => _realtimeSubscribed;
+  bool get isSyncing => _isSyncing;
 
   /// Get count of pending changes
   int get pendingChangesCount => _queueBox?.length ?? 0;
+
+  /// Stream for listening to sync status updates (Phase 2)
+  Stream<bool> get syncStatusStream => _syncStatusController.stream;
+
+  /// Get count of pending changes (async version for Phase 2)
+  Future<int> getPendingChangesCount() async {
+    if (!_initialized) {
+      await init();
+    }
+    return _queueBox?.length ?? 0;
+  }
+
+  /// Check if device is online (Phase 2)
+  Future<bool> isOnline() async {
+    final status = await Connectivity().checkConnectivity();
+    return _isOnline(status);
+  }
+
+  /// Force sync now - for manual sync button (Phase 2)
+  Future<void> syncNow() async {
+    if (!_initialized) {
+      await init();
+    }
+    if (_isSyncing) {
+      debugPrint('[SYNC] Sync allerede i gang, springer over');
+      return;
+    }
+
+    final online = await isOnline();
+    if (!online) {
+      throw Exception('Ingen internetforbindelse');
+    }
+
+    if (!_remoteClient.isConfigured) {
+      throw Exception('Supabase ikke konfigureret');
+    }
+
+    await syncPending();
+    await pullFromRemote();
+    await _subscribeToRealtime();
+    _syncStatusController.add(_isSyncing);
+  }
 
   /// Add a listener for real-time changes from other devices
   void addRealtimeListener(void Function(String entityType, String action, Map<String, dynamic> data) listener) {
@@ -268,9 +313,28 @@ class SyncService {
     );
     await _queueBox?.put(task.id, task);
     debugPrint('Queued change (${task.entityType}/${task.operation})');
+    _syncStatusController.add(_isSyncing);
 
     // Prøv at synkronisere med det samme hvis vi er online
     await _triggerImmediateSyncIfOnline();
+  }
+
+  Future<void> _syncOnReconnect() async {
+    if (!_initialized) {
+      await init();
+    }
+    if (!_remoteClient.isConfigured) {
+      _syncStatusController.add(_isSyncing);
+      return;
+    }
+    if (_isSyncing) return;
+
+    if (_queueBox?.isNotEmpty ?? false) {
+      await syncPending();
+    }
+    await pullFromRemote();
+    await _subscribeToRealtime();
+    _syncStatusController.add(_isSyncing);
   }
 
   /// Pull data from Supabase and populate local database (Supabase er primær kilde)
@@ -441,6 +505,7 @@ class SyncService {
     await _remoteClient.ensureSchemaExists();
 
     _isSyncing = true;
+    _syncStatusController.add(true);
     final tasks = List<SyncTask>.from(_queueBox!.values);
 
     for (final task in tasks) {
@@ -462,6 +527,7 @@ class SyncService {
     }
 
     _isSyncing = false;
+    _syncStatusController.add(false);
   }
 
   Future<bool> _pushTask(SyncTask task) async {

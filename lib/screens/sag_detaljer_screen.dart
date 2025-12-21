@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
@@ -7,8 +11,21 @@ import '../models/timer_log.dart';
 import '../models/equipment_log.dart';
 import '../models/sag_message.dart';
 import '../models/activity_log.dart';
-import '../providers/theme_provider.dart';
+import '../models/user.dart';
+import '../providers/theme_provider.dart' show ThemeProvider;
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_theme.dart';
 import '../constants/roles_and_features.dart';
+import '../widgets/responsive_builder.dart';
+import '../widgets/samlet_overblik_widget.dart';
+import '../widgets/theme_toggle.dart';
+import '../widgets/ui/ska_badge.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 import 'blok_administration_screen.dart';
 import 'kabler_slanger_screen.dart';
 import 'sag_udstyr_screen.dart';
@@ -35,8 +52,23 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   List<EquipmentLog> _equipmentLogs = [];
   List<SagMessage> _messages = [];
   List<ActivityLog> _activityLogs = [];
+  final _sagsnrController = TextEditingController();
+  final _sagTypeController = TextEditingController();
+  final _adresseController = TextEditingController();
+  final _byggelederController = TextEditingController();
+  final _byggelederEmailController = TextEditingController();
+  final _byggelederTlfController = TextEditingController();
+  final _bygherreController = TextEditingController();
+  final _cvrNrController = TextEditingController();
+  final _postnummerController = TextEditingController();
+  final _byController = TextEditingController();
+  final _kundensSagsrefController = TextEditingController();
+  final _beskrivelseController = TextEditingController();
+  Timer? _autoSaveTimer;
+  String? _formSagId;
   static const List<Map<String, dynamic>> _tabItems = [
     {'key': 'oversigt', 'label': 'Oversigt', 'icon': Icons.dashboard_outlined},
+    {'key': 'samlet', 'label': 'Samlet overblik', 'icon': Icons.remove_red_eye},
     {'key': 'blokke', 'label': 'Blokke', 'icon': Icons.view_quilt},
     {'key': 'udstyr', 'label': 'Udstyr', 'icon': Icons.inventory_2},
     {'key': 'kabler', 'label': 'Kabler & slanger', 'icon': Icons.cable},
@@ -46,6 +78,8 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     {'key': 'priser', 'label': 'Priser', 'icon': Icons.attach_money},
     {'key': 'rentabilitet', 'label': 'Rentabilitet', 'icon': Icons.savings},
     {'key': 'faktura', 'label': 'Fakturaer', 'icon': Icons.receipt_long},
+    {'key': 'backup', 'label': 'Backup', 'icon': Icons.backup},
+    {'key': 'admin', 'label': 'Administration', 'icon': Icons.admin_panel_settings},
   ];
   String _activeTab = 'oversigt';
 
@@ -55,6 +89,8 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       switch (key) {
         case 'oversigt':
           return true; // Always visible
+        case 'samlet':
+          return true;
         case 'blokke':
           return _authService.hasFeature(AppFeatures.blockManagement);
         case 'udstyr':
@@ -73,6 +109,10 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           return _authService.hasFeature(AppFeatures.profitability);
         case 'faktura':
           return _authService.hasFeature(AppFeatures.invoicing);
+        case 'backup':
+          return _authService.hasFeature(AppFeatures.backup);
+        case 'admin':
+          return _authService.isAdmin || _authService.isBogholder;
         default:
           return true;
       }
@@ -85,6 +125,24 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   void initState() {
     super.initState();
     _loadSag();
+  }
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    _sagsnrController.dispose();
+    _sagTypeController.dispose();
+    _adresseController.dispose();
+    _byggelederController.dispose();
+    _byggelederEmailController.dispose();
+    _byggelederTlfController.dispose();
+    _bygherreController.dispose();
+    _cvrNrController.dispose();
+    _postnummerController.dispose();
+    _byController.dispose();
+    _kundensSagsrefController.dispose();
+    _beskrivelseController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSag() async {
@@ -100,10 +158,119 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       _messages = messages;
       _activityLogs = activities;
       _isLoading = false;
+      if (sag != null) {
+        _syncFormWithSag(sag);
+      }
       if (!_visibleTabs.any((t) => t['key'] == _activeTab)) {
         _activeTab = 'oversigt';
       }
     });
+  }
+
+  void _syncFormWithSag(Sag sag) {
+    if (_formSagId != sag.id) {
+      _sagsnrController.text = sag.sagsnr;
+      _sagTypeController.text = sag.sagType ?? '';
+      _adresseController.text = sag.adresse;
+      _byggelederController.text = sag.byggeleder;
+      _byggelederEmailController.text = sag.byggelederEmail ?? '';
+      _byggelederTlfController.text = sag.byggelederTlf ?? '';
+      _bygherreController.text = sag.bygherre ?? '';
+      _cvrNrController.text = sag.cvrNr ?? '';
+      _postnummerController.text = sag.postnummer ?? '';
+      _byController.text = sag.by ?? '';
+      _kundensSagsrefController.text = sag.kundensSagsref ?? '';
+      _beskrivelseController.text = sag.beskrivelse ?? '';
+      _formSagId = sag.id;
+    }
+  }
+
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      _saveSagChanges();
+    });
+  }
+
+  Future<void> _saveSagChanges() async {
+    final sag = _sag;
+    if (sag == null) return;
+
+    final updated = Sag(
+      id: sag.id,
+      sagsnr: _sagsnrController.text.trim(),
+      adresse: _adresseController.text.trim(),
+      byggeleder: _byggelederController.text.trim(),
+      byggelederEmail: _byggelederEmailController.text.trim().isEmpty
+          ? null
+          : _byggelederEmailController.text.trim(),
+      byggelederTlf: _byggelederTlfController.text.trim().isEmpty
+          ? null
+          : _byggelederTlfController.text.trim(),
+      bygherre: _bygherreController.text.trim().isEmpty
+          ? null
+          : _bygherreController.text.trim(),
+      cvrNr: _cvrNrController.text.trim().isEmpty
+          ? null
+          : _cvrNrController.text.trim(),
+      postnummer: _postnummerController.text.trim().isEmpty
+          ? null
+          : _postnummerController.text.trim(),
+      by: _byController.text.trim().isEmpty ? null : _byController.text.trim(),
+      kundensSagsref: _kundensSagsrefController.text.trim().isEmpty
+          ? null
+          : _kundensSagsrefController.text.trim(),
+      beskrivelse: _beskrivelseController.text.trim().isEmpty
+          ? null
+          : _beskrivelseController.text.trim(),
+      status: sag.status,
+      aktiv: sag.aktiv,
+      arkiveret: sag.arkiveret,
+      arkiveretDato: sag.arkiveretDato,
+      sagType: _sagTypeController.text.trim().isEmpty
+          ? sag.sagType
+          : _sagTypeController.text.trim(),
+      region: sag.region,
+      oprettetAf: sag.oprettetAf,
+      oprettetDato: sag.oprettetDato,
+      opdateretDato: DateTime.now().toIso8601String(),
+      createdAt: sag.createdAt,
+      updatedAt: DateTime.now().toIso8601String(),
+      needsAttention: sag.needsAttention,
+      attentionNote: sag.attentionNote,
+      attentionAcknowledgedAt: sag.attentionAcknowledgedAt,
+      attentionAcknowledgedBy: sag.attentionAcknowledgedBy,
+    );
+
+    await _dbService.updateSagQuietly(updated);
+    if (mounted) {
+      setState(() {
+        _sag = updated;
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    await _authService.logout();
+    if (mounted) {
+      await context.read<ThemeProvider>().reloadForCurrentUser();
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
+  }
+
+  void _handleBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/sager');
+    }
+  }
+
+  Future<void> _launchUri(String uriString) async {
+    final uri = Uri.parse(uriString);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _showTimerRegistrationDialog() {
@@ -594,24 +761,10 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'aktiv':
-      case 'igangværende':
-        return Colors.green;
-      case 'afsluttet':
-      case 'completed':
-        return Colors.blue;
-      case 'paused':
-      case 'pauseret':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>();
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Indlæser...')),
@@ -639,84 +792,282 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     }
 
     final sag = _sag!;
-    final canAccessAdmin = _authService.currentUser?.role == 'admin' || _authService.currentUser?.role == 'bogholder';
+    final isAdmin = _authService.currentUser?.role == 'admin' || _authService.currentUser?.role == 'bogholder';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Sag ${sag.sagsnr}'),
-        elevation: 0,
-        actions: [
-          if (canAccessAdmin)
-            IconButton(
-              tooltip: 'Administration',
-              onPressed: () => Navigator.pushNamed(context, '/admin-settings'),
-              icon: const Icon(Icons.admin_panel_settings),
+      backgroundColor: AppColors.background,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(sag, isAdmin: isAdmin),
+          Expanded(
+            child: Padding(
+              padding: AppSpacing.p4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTabMenu(),
+                  const SizedBox(height: AppSpacing.s6),
+                  Expanded(child: _buildTabContent(sag)),
+                ],
+              ),
             ),
+          ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderCard(sag),
-            const SizedBox(height: 12),
-            _buildTabMenu(),
-            const SizedBox(height: 16),
-            Expanded(child: _buildTabContent(sag)),
-          ],
+    );
+  }
+
+  Widget _buildHeader(Sag sag, {required bool isAdmin}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 1),
+        ),
+        boxShadow: AppShadows.shadowSm,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: AppSpacing.symmetric(horizontal: AppSpacing.s4, vertical: AppSpacing.s3),
+          child: ResponsiveBuilder(
+            mobile: _buildHeaderMobile(sag, isAdmin: isAdmin),
+            tablet: _buildHeaderDesktop(sag, isAdmin: isAdmin),
+            desktop: _buildHeaderDesktop(sag, isAdmin: isAdmin),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeaderCard(Sag sag) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+  Widget _buildHeaderMobile(Sag sag, {required bool isAdmin}) {
+    final roleLabel = isAdmin ? 'Bogholder' : 'Tekniker';
+    final regionLabel = _resolveRegionLabel(sag);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SkaButton(
+              variant: ButtonVariant.ghost,
+              size: ButtonSize.sm,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 16),
+                  SizedBox(width: 6),
+                  Text('Tilbage'),
+                ],
+              ),
+              onPressed: _handleBack,
+            ),
+            const Spacer(),
+            const ThemeToggle(size: ButtonSize.icon),
+            const SizedBox(width: AppSpacing.s2),
+            SkaButton(
+              variant: ButtonVariant.outline,
+              size: ButtonSize.sm,
+              icon: const Icon(Icons.logout, size: 16),
+              text: 'Log ud ($roleLabel)',
+              onPressed: _handleLogout,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s3),
+        Text(
+          sag.sagsnr,
+          style: AppTypography.baseSemibold.copyWith(color: AppColors.foreground),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          sag.adresse,
+          style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        Wrap(
+          spacing: AppSpacing.s2,
+          runSpacing: AppSpacing.s1,
+          children: [
+            _buildRoleBadge(isAdmin),
+            SkaBadge.status(text: sag.status, status: sag.status, small: true),
+            if (regionLabel != null) SkaBadge.region(regionLabel, small: true),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderDesktop(Sag sag, {required bool isAdmin}) {
+    final roleLabel = isAdmin ? 'Bogholder' : 'Tekniker';
+    final regionLabel = _resolveRegionLabel(sag);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sag.sagsnr,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        sag.adresse,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(sag.status).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    sag.status.toUpperCase(),
-                    style: TextStyle(
-                      color: _getStatusColor(sag.status),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+            SkaButton(
+              variant: ButtonVariant.ghost,
+              size: ButtonSize.lg,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 18),
+                  SizedBox(width: 8),
+                  Text('Tilbage til oversigt'),
+                ],
+              ),
+              onPressed: _handleBack,
+            ),
+            const SizedBox(width: AppSpacing.s4),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _buildContactLine(
+                      icon: Icons.business,
+                      label: 'Projektleder',
+                      value: sag.byggeleder,
                     ),
-                  ),
+                    if (sag.bygherre != null)
+                      _buildContactLine(
+                        icon: Icons.person,
+                        label: 'Bygherre',
+                        value: sag.bygherre!,
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${sag.sagsnr}${regionLabel != null ? ' - $regionLabel' : ''}',
+                      style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: AppSpacing.s3,
+                      runSpacing: AppSpacing.s1,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        _buildContactLink(
+                          icon: Icons.phone,
+                          value: sag.byggelederTlf ?? '',
+                          uri: sag.byggelederTlf != null
+                              ? 'tel:${sag.byggelederTlf!.replaceAll(' ', '')}'
+                              : '',
+                        ),
+                        _buildContactLink(
+                          icon: Icons.mail_outline,
+                          value: sag.byggelederEmail ?? '',
+                          uri: sag.byggelederEmail != null
+                              ? 'mailto:${sag.byggelederEmail}'
+                              : '',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s4),
+            Wrap(
+              spacing: AppSpacing.s2,
+              children: [
+                const ThemeToggle(size: ButtonSize.icon),
+                SkaButton(
+                  variant: ButtonVariant.outline,
+                  size: ButtonSize.lg,
+                  icon: const Icon(Icons.logout, size: 18),
+                  text: 'Log ud ($roleLabel)',
+                  onPressed: _handleLogout,
                 ),
               ],
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s3),
+        Text(
+          sag.sagsnr,
+          style: AppTypography.lgSemibold.copyWith(color: AppColors.foreground),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          sag.adresse,
+          style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        Wrap(
+          spacing: AppSpacing.s2,
+          runSpacing: AppSpacing.s1,
+          children: [
+            _buildRoleBadge(isAdmin),
+            if (regionLabel != null) SkaBadge.region(regionLabel, small: true),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoleBadge(bool isAdmin) {
+    final role = _authService.currentUser?.role ?? '';
+    final label = role == 'admin'
+        ? 'Bogholder (Admin)'
+        : (role == 'bogholder' ? 'Bogholder' : 'Tekniker');
+    return SkaBadge(
+      text: label,
+      variant: isAdmin ? BadgeVariant.primary : BadgeVariant.secondary,
+      small: true,
+    );
+  }
+
+  Widget _buildContactLine({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Icon(icon, size: 14, color: AppColors.primary),
+        const SizedBox(width: 6),
+        Text(
+          '$label: ',
+          style: AppTypography.smMedium.copyWith(color: AppColors.foreground),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            style: AppTypography.sm.copyWith(color: AppColors.foreground),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactLink({
+    required IconData icon,
+    required String value,
+    required String uri,
+  }) {
+    final displayValue = value.isNotEmpty ? value : 'Ikke tilgaengelig';
+    final isEnabled = uri.isNotEmpty;
+    final color = isEnabled ? AppColors.primary : AppColors.mutedForeground;
+
+    return InkWell(
+      onTap: isEnabled ? () => _launchUri(uri) : null,
+      borderRadius: AppRadius.radiusMd,
+      child: Padding(
+        padding: AppSpacing.symmetric(horizontal: AppSpacing.s2, vertical: AppSpacing.s1),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              displayValue,
+              style: AppTypography.xs.copyWith(color: color),
             ),
           ],
         ),
@@ -725,36 +1076,92 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   }
 
   Widget _buildTabMenu() {
+    final isWide = MediaQuery.of(context).size.width >= Breakpoints.lg;
+    final content = Container(
+      padding: AppSpacing.p1,
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: AppRadius.radiusLg,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: isWide
+          ? Wrap(
+              spacing: AppSpacing.s1,
+              runSpacing: AppSpacing.s1,
+              children: _visibleTabs.map(_buildTabChip).toList(),
+            )
+          : Row(
+              children: _visibleTabs.map(_buildTabChip).toList(),
+            ),
+    );
+
+    if (isWide) {
+      return content;
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(
-        children: _visibleTabs.map((tab) {
-          final isActive = _activeTab == tab['key'];
-          final iconColor = isActive
-              ? Theme.of(context).colorScheme.onPrimaryContainer
-              : Theme.of(context).colorScheme.onSurface;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              selected: isActive,
-              onSelected: (_) => setState(() => _activeTab = tab['key'] as String),
-              avatar: Icon(
-                tab['icon'] as IconData,
-                size: 18,
-                color: iconColor,
-              ),
-              label: Text(tab['label'] as String),
-              selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-              backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.5),
-              labelStyle: TextStyle(
-                color: iconColor,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              showCheckmark: false,
+      child: content,
+    );
+  }
+
+  Color? _tabAccentColor(String key) {
+    switch (key) {
+      case 'rentabilitet':
+        return AppColors.success;
+      case 'faktura':
+        return AppColors.blue700;
+      case 'backup':
+        return AppColors.primary;
+      case 'admin':
+        return AppColors.error;
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildTabChip(Map<String, dynamic> tab) {
+    final isActive = _activeTab == tab['key'];
+    final accent = _tabAccentColor(tab['key'] as String);
+    final accentBg = accent != null
+        ? accent.withOpacity(AppColors.isDark ? 0.22 : 0.12)
+        : Colors.transparent;
+    final accentBorder = accent != null
+        ? accent.withOpacity(AppColors.isDark ? 0.6 : 0.3)
+        : Colors.transparent;
+    final bgColor = isActive ? (accent ?? AppColors.background) : accentBg;
+    final borderColor = isActive ? (accent ?? AppColors.border) : accentBorder;
+    final textColor = isActive
+        ? (accent != null ? AppColors.primaryForeground : AppColors.foreground)
+        : (accent ?? AppColors.mutedForeground);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.s1),
+      child: InkWell(
+        onTap: () => setState(() => _activeTab = tab['key'] as String),
+        borderRadius: AppRadius.radiusMd,
+        child: Container(
+          padding: AppSpacing.symmetric(horizontal: AppSpacing.s3, vertical: AppSpacing.s2),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: AppRadius.radiusMd,
+            border: Border.all(
+              color: borderColor,
+              width: 1,
             ),
-          );
-        }).toList(),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(tab['icon'] as IconData, size: 14, color: textColor),
+              const SizedBox(width: AppSpacing.s1),
+              Text(
+                tab['label'] as String,
+                style: AppTypography.smMedium.copyWith(color: textColor),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -785,12 +1192,428 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         return BlokAdministrationScreen(sagId: widget.sagId);
       case 'kabler':
         return KablerSlangerScreen(sag: sag);
+      case 'samlet':
+        return Padding(
+          padding: AppSpacing.symmetric(horizontal: AppSpacing.s6),
+          child: SamletOverblikWidget(sagId: widget.sagId),
+        );
+      case 'backup':
+        return _buildBackupTab();
+      case 'admin':
+        return _buildAdminTab();
       default:
         return _buildOversigtTab(sag);
     }
   }
 
   Widget _buildOversigtTab(Sag sag) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSagInfoCard(sag),
+          const SizedBox(height: AppSpacing.s6),
+          _buildQuickNavCard(),
+          const SizedBox(height: AppSpacing.s6),
+          Padding(
+            padding: AppSpacing.symmetric(horizontal: AppSpacing.s6),
+            child: SamletOverblikWidget(sagId: widget.sagId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackupTab() {
+    return Padding(
+      padding: AppSpacing.symmetric(horizontal: AppSpacing.s6),
+      child: SkaCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SkaCardHeader(
+              title: 'Backup & gendannelse',
+              description: 'Administrer eksport og gendannelse af data.',
+            ),
+            SkaCardContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Backup er tilgaengelig i indstillinger.',
+                    style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
+                  ),
+                  const SizedBox(height: AppSpacing.s3),
+                  SkaButton(
+                    icon: const Icon(Icons.settings, size: 16),
+                    text: 'Aabn indstillinger',
+                    onPressed: () => Navigator.pushNamed(context, '/settings'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminTab() {
+    return Padding(
+      padding: AppSpacing.symmetric(horizontal: AppSpacing.s6),
+      child: SkaCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SkaCardHeader(
+              title: 'Administration',
+              description: 'Admin vaerktoejer til brugere og systemindstillinger.',
+            ),
+            SkaCardContent(
+              child: Wrap(
+                spacing: AppSpacing.s3,
+                runSpacing: AppSpacing.s3,
+                children: [
+                  SkaButton(
+                    variant: ButtonVariant.outline,
+                    icon: const Icon(Icons.admin_panel_settings, size: 16),
+                    text: 'Admin indstillinger',
+                    onPressed: () => Navigator.pushNamed(context, '/admin-settings'),
+                  ),
+                  SkaButton(
+                    variant: ButtonVariant.outline,
+                    icon: const Icon(Icons.group, size: 16),
+                    text: 'Bruger administration',
+                    onPressed: () => Navigator.pushNamed(context, '/users'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String? _regionFromPostnummer(String postnummer) {
+    final normalized = postnummer.trim();
+    if (normalized.isEmpty) return null;
+    final value = int.tryParse(normalized);
+    if (value == null) return null;
+    if (value >= 0 && value <= 4999) {
+      return 'Sjaelland';
+    }
+    if (value >= 5000 && value <= 5999) {
+      return 'Fyn';
+    }
+    if (value >= 6000 && value <= 9999) {
+      return 'Jylland';
+    }
+    return null;
+  }
+
+  String? _resolveRegionLabel(Sag sag) {
+    final derived = _regionFromPostnummer(_postnummerController.text);
+    if (derived != null) {
+      return derived;
+    }
+    return sag.region;
+  }
+
+  Widget _buildSagInfoCard(Sag sag) {
+    final regionLabel = _resolveRegionLabel(sag);
+    return SkaCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SkaCardHeader(title: 'Sag Information'),
+          SkaCardContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ResponsiveGrid(
+                  mobileColumns: 1,
+                  tabletColumns: 2,
+                  desktopColumns: 2,
+                  spacing: AppSpacing.s4,
+                  runSpacing: AppSpacing.s4,
+                  children: [
+                    SkaInput(
+                      label: 'Sagsnummer *',
+                      placeholder: '2025-001',
+                      controller: _sagsnrController,
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                    SkaInput(
+                      label: 'Sag Type *',
+                      placeholder: 'Udtorring',
+                      controller: _sagTypeController,
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionHeader(
+                  icon: Icons.location_on_outlined,
+                  title: 'Adresse',
+                ),
+                const SizedBox(height: AppSpacing.s3),
+                SkaInput(
+                  label: 'Adresse *',
+                  placeholder: 'Vejnavn og husnummer',
+                  controller: _adresseController,
+                  onChanged: (_) => _scheduleAutoSave(),
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                ResponsiveGrid(
+                  mobileColumns: 1,
+                  tabletColumns: 2,
+                  desktopColumns: 2,
+                  spacing: AppSpacing.s4,
+                  runSpacing: AppSpacing.s4,
+                  children: [
+                    SkaInput(
+                      label: 'Postnummer',
+                      placeholder: '0000',
+                      controller: _postnummerController,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) {
+                        _scheduleAutoSave();
+                        setState(() {});
+                      },
+                    ),
+                    SkaInput(
+                      label: 'By',
+                      placeholder: 'Bynavn',
+                      controller: _byController,
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                  ],
+                ),
+                if (regionLabel != null && regionLabel.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.s2),
+                  Text(
+                    'Region: $regionLabel',
+                    style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionHeader(
+                  icon: Icons.phone_outlined,
+                  title: 'Kontaktoplysninger',
+                ),
+                const SizedBox(height: AppSpacing.s3),
+                SkaInput(
+                  label: 'Byggeleder *',
+                  placeholder: 'Navn paa byggeleder',
+                  controller: _byggelederController,
+                  onChanged: (_) => _scheduleAutoSave(),
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                ResponsiveGrid(
+                  mobileColumns: 1,
+                  tabletColumns: 2,
+                  desktopColumns: 2,
+                  spacing: AppSpacing.s4,
+                  runSpacing: AppSpacing.s4,
+                  children: [
+                    SkaInput(
+                      label: 'Telefon',
+                      placeholder: '12345678',
+                      controller: _byggelederTlfController,
+                      keyboardType: TextInputType.phone,
+                      prefixIcon: const Icon(Icons.phone),
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                    SkaInput(
+                      label: 'Email',
+                      placeholder: 'email@example.com',
+                      controller: _byggelederEmailController,
+                      keyboardType: TextInputType.emailAddress,
+                      prefixIcon: const Icon(Icons.mail_outline),
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionHeader(
+                  icon: Icons.business_outlined,
+                  title: 'Bygherre Information',
+                ),
+                const SizedBox(height: AppSpacing.s3),
+                ResponsiveGrid(
+                  mobileColumns: 1,
+                  tabletColumns: 2,
+                  desktopColumns: 2,
+                  spacing: AppSpacing.s4,
+                  runSpacing: AppSpacing.s4,
+                  children: [
+                    SkaInput(
+                      label: 'Bygherre',
+                      placeholder: 'Navn paa bygherre/selskab',
+                      controller: _bygherreController,
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                    SkaInput(
+                      label: 'CVR Nummer',
+                      placeholder: '12345678',
+                      controller: _cvrNrController,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => _scheduleAutoSave(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                SkaInput(
+                  label: 'Kundens Sagsreference',
+                  placeholder: 'Kundens interne reference',
+                  controller: _kundensSagsrefController,
+                  onChanged: (_) => _scheduleAutoSave(),
+                ),
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionHeader(
+                  icon: Icons.description_outlined,
+                  title: 'Beskrivelse',
+                ),
+                const SizedBox(height: AppSpacing.s3),
+                SkaInput(
+                  label: 'Beskrivelse',
+                  placeholder: 'Beskriv sagen og eventuelle forhold...',
+                  controller: _beskrivelseController,
+                  maxLines: 4,
+                  minLines: 3,
+                  onChanged: (_) => _scheduleAutoSave(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader({required IconData icon, required String title}) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.foreground),
+        const SizedBox(width: AppSpacing.s2),
+        Text(
+          title,
+          style: AppTypography.baseSemibold.copyWith(color: AppColors.foreground),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickNavCard() {
+    final items = <Map<String, dynamic>>[
+      {'key': 'samlet', 'label': 'Samlet overblik over alt', 'icon': Icons.remove_red_eye},
+      {'key': 'blokke', 'label': 'Blok administration', 'icon': Icons.view_quilt},
+      {'key': 'udstyr', 'label': 'Udstyr og maskiner', 'icon': Icons.inventory_2},
+      {'key': 'kabler', 'label': 'Kabler & slanger', 'icon': Icons.cable},
+      {'key': 'timer', 'label': 'Timer registrering', 'icon': Icons.timer},
+      {'key': 'beskeder', 'label': 'Beskeder', 'icon': Icons.chat_bubble_outline},
+      {'key': 'aktivitet', 'label': 'Se aktivitetslog', 'icon': Icons.list_alt},
+      {'key': 'rentabilitet', 'label': 'Sag rentabilitet', 'icon': Icons.savings},
+      {'key': 'faktura', 'label': 'Fakturaer', 'icon': Icons.receipt_long},
+      {'key': 'backup', 'label': 'Data Backup & Restore', 'icon': Icons.backup},
+      {'key': 'admin', 'label': 'Administration', 'icon': Icons.admin_panel_settings},
+      {'key': 'priser', 'label': 'Priser', 'icon': Icons.attach_money},
+    ];
+
+    final visibleItems = items.where((item) => _canShowTab(item['key'] as String)).toList();
+
+    return SkaCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SkaCardHeader(title: 'Hurtig navigation'),
+          SkaCardContent(
+            child: ResponsiveGrid(
+              mobileColumns: 1,
+              tabletColumns: 2,
+              desktopColumns: 2,
+              spacing: AppSpacing.s3,
+              runSpacing: AppSpacing.s3,
+              children: visibleItems
+                  .map(
+                    (item) => _buildNavButton(
+                      label: item['label'] as String,
+                      icon: item['icon'] as IconData,
+                      tabKey: item['key'] as String,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _canShowTab(String key) {
+    return _visibleTabs.any((tab) => tab['key'] == key);
+  }
+
+  Widget _buildNavButton({
+    required String label,
+    required IconData icon,
+    required String tabKey,
+  }) {
+    Color background = AppColors.background;
+    Color border = AppColors.border;
+    Color textColor = AppColors.foreground;
+
+    if (tabKey == 'rentabilitet') {
+      background = AppColors.successLight;
+      border = AppColors.success.withOpacity(0.3);
+      textColor = AppColors.success;
+    } else if (tabKey == 'faktura') {
+      background = AppColors.blue50;
+      border = AppColors.blue200;
+      textColor = AppColors.blue700;
+    } else if (tabKey == 'backup') {
+      background = AppColors.blue50;
+      border = AppColors.blue200;
+      textColor = AppColors.blue700;
+    } else if (tabKey == 'admin') {
+      background = AppColors.errorLight;
+      border = AppColors.error.withOpacity(0.3);
+      textColor = AppColors.error;
+    }
+
+    return InkWell(
+      onTap: () => setState(() => _activeTab = tabKey),
+      borderRadius: AppRadius.radiusMd,
+      child: Container(
+        padding: AppSpacing.symmetric(horizontal: AppSpacing.s4, vertical: AppSpacing.s3),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: AppRadius.radiusMd,
+          border: Border.all(color: border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: textColor),
+            const SizedBox(width: AppSpacing.s3),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.smMedium.copyWith(color: textColor),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildOversigtLegacyTab(Sag sag) {
     // Get statistics
     final blokke = _dbService.getBlokkeBySag(sag.id);
     final totalBlokke = blokke.length;
@@ -1370,6 +2193,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildPlaceholderTab(String title, String subtitle) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1393,248 +2217,679 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
 
   Widget _buildBeskedTab() {
     final currentUser = _authService.currentUser;
-    final messageController = TextEditingController();
     final allUsers = _dbService.getAllUsers();
-
-    // Filter messages visible to current user
     final visibleMessages = currentUser != null
         ? _messages.where((msg) => msg.isVisibleTo(currentUser.id)).toList()
-        : _messages;
+        : _messages.toList();
 
-    return StatefulBuilder(
-      builder: (context, setLocalState) {
-        // Local state for target user selection
-        String? selectedTargetUserId;
+    visibleMessages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSection(
-              title: 'Beskeder',
+    final unreadCount = currentUser == null
+        ? 0
+        : visibleMessages.where((msg) => msg.userId != currentUser.id && msg.isRead != true).length;
+
+    final messageById = {
+      for (final message in _messages) message.id: message,
+    };
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCurrentUserCard(currentUser),
+          const SizedBox(height: AppSpacing.s4),
+          SkaCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (visibleMessages.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Ingen beskeder endnu. Skriv den første besked til teamet.',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: visibleMessages.length,
-                  itemBuilder: (context, index) {
-                    final msg = visibleMessages[index];
-                    final isOwn = currentUser != null && msg.userId == currentUser.id;
-                    return Align(
-                      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isOwn
-                              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                              : Theme.of(context).colorScheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment:
-                              isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  msg.userName,
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                // Show target indicator if message is targeted
-                                if (msg.isTargeted) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.person, size: 12, color: Colors.blue),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Til: ${msg.targetDisplayName}',
-                                          style: const TextStyle(fontSize: 10, color: Colors.blue),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(msg.text),
-                            const SizedBox(height: 4),
-                            Text(
-                              msg.timestamp.replaceFirst('T', ' ').split('.').first,
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                            ),
-                          ],
+                SkaCardHeader(
+                  title: 'Kommunikation',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (unreadCount > 0) ...[
+                        SkaBadgeCount(count: unreadCount),
+                        const SizedBox(width: AppSpacing.s2),
+                      ],
+                      SkaButton(
+                        variant: ButtonVariant.primary,
+                        size: ButtonSize.sm,
+                        icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                        text: 'Ny besked',
+                        onPressed: () => _showNewMessageDialog(
+                          allUsers: allUsers,
+                          currentUser: currentUser,
                         ),
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Target employee selector
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
+                    ],
                   ),
+                ),
+                SkaCardContent(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Send til:',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String?>(
-                        value: selectedTargetUserId,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          isDense: true,
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Row(
+                      if (visibleMessages.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: AppSpacing.symmetric(vertical: AppSpacing.s6),
+                            child: Column(
                               children: [
-                                Icon(Icons.groups, size: 18),
-                                SizedBox(width: 8),
-                                Text('Alle medarbejdere'),
+                                Icon(Icons.chat_bubble_outline, size: 40, color: AppColors.border),
+                                const SizedBox(height: AppSpacing.s3),
+                                Text(
+                                  'Ingen beskeder endnu',
+                                  style: AppTypography.baseSemibold.copyWith(
+                                    color: AppColors.mutedForeground,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.s2),
+                                Text(
+                                  'Start en samtale ved at sende en besked',
+                                  style: AppTypography.sm.copyWith(
+                                    color: AppColors.mutedForeground,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                          ...allUsers.map((user) => DropdownMenuItem<String?>(
-                                value: user.id,
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.person, size: 18),
-                                    SizedBox(width: 8),
-                                    Text(user.name),
-                                    if (user.role == 'admin')
-                                      Container(
-                                        margin: const EdgeInsets.only(left: 8),
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          'Admin',
-                                          style: TextStyle(fontSize: 10, color: Colors.red),
-                                        ),
-                                      ),
-                                  ],
+                        )
+                      else
+                        Column(
+                          children: visibleMessages
+                              .map(
+                                (message) => _buildMessageCard(
+                                  message: message,
+                                  currentUser: currentUser,
+                                  messageById: messageById,
+                                  allUsers: allUsers,
                                 ),
-                              )),
-                        ],
-                        onChanged: (value) {
-                          setLocalState(() {
-                            selectedTargetUserId = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: messageController,
-                              decoration: const InputDecoration(
-                                hintText: 'Skriv en besked...',
-                                border: OutlineInputBorder(),
-                              ),
-                              maxLines: 2,
-                              minLines: 1,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.send),
-                            label: const Text('Send'),
-                            onPressed: () {
-                              final text = messageController.text.trim();
-                              if (text.isEmpty) return;
-                              if (currentUser == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Ingen bruger logget ind')),
-                                );
-                                return;
-                              }
-
-                              // Find target user name if selected
-                              String? targetUserName;
-                              if (selectedTargetUserId != null) {
-                                final targetUser = allUsers.firstWhere(
-                                  (u) => u.id == selectedTargetUserId,
-                                  orElse: () => currentUser,
-                                );
-                                targetUserName = targetUser.name;
-                              }
-
-                              final msg = SagMessage(
-                                id: _uuid.v4(),
-                                sagId: widget.sagId,
-                                userId: currentUser.id,
-                                userName: currentUser.name,
-                                text: text,
-                                timestamp: DateTime.now().toIso8601String(),
-                                targetUserId: selectedTargetUserId,
-                                targetUserName: targetUserName,
-                              );
-                              _dbService.addMessage(msg);
-                              setState(() {
-                                _messages = _dbService.getMessagesBySag(widget.sagId);
-                                _activityLogs = _dbService.getActivityLogsBySag(widget.sagId);
-                              });
-                              messageController.clear();
-
-                              // Show confirmation
-                              final targetDisplay = selectedTargetUserId == null
-                                  ? 'alle medarbejdere'
-                                  : targetUserName ?? 'valgt medarbejder';
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Besked sendt til $targetDisplay'),
-                                  backgroundColor: Colors.green,
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                              )
+                              .toList(),
+                        ),
                     ],
                   ),
                 ),
               ],
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
+  Widget _buildCurrentUserCard(User? currentUser) {
+    if (currentUser == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isAdmin = currentUser.role == 'admin' || currentUser.role == 'bogholder';
+
+    return SkaCard(
+      padding: AppSpacing.p4,
+      child: Row(
+        children: [
+          SkaBadge(
+            text: isAdmin ? 'Bogholder' : 'Tekniker',
+            variant: isAdmin ? BadgeVariant.primary : BadgeVariant.secondary,
+            small: true,
+          ),
+          const SizedBox(width: AppSpacing.s3),
+          Expanded(
+            child: Text(
+              'Du er logget ind som ${currentUser.name}',
+              style: AppTypography.sm.copyWith(color: AppColors.foreground),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageCard({
+    required SagMessage message,
+    required User? currentUser,
+    required Map<String, SagMessage> messageById,
+    required List<User> allUsers,
+  }) {
+    final isOwn = currentUser != null && message.userId == currentUser.id;
+    final isUnread = !isOwn && message.isRead != true;
+    final priorityColors = _getPriorityColors(message.priority);
+    final parent = message.parentMessageId != null ? messageById[message.parentMessageId] : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.s3),
+      padding: AppSpacing.p4,
+      decoration: BoxDecoration(
+        color: isUnread ? AppColors.warningLight : AppColors.background,
+        borderRadius: AppRadius.radiusLg,
+        border: Border.all(
+          color: isUnread ? AppColors.warning.withOpacity(0.3) : AppColors.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: AppSpacing.s2,
+            runSpacing: AppSpacing.s1,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Icon(
+                _messageTypeIcon(message.messageType),
+                size: 16,
+                color: _messageTypeColor(message.messageType),
+              ),
+              Container(
+                padding: AppSpacing.symmetric(horizontal: AppSpacing.s2, vertical: AppSpacing.s1),
+                decoration: BoxDecoration(
+                  color: priorityColors.background,
+                  borderRadius: AppRadius.radiusMd,
+                  border: Border.all(color: priorityColors.border),
+                ),
+                child: Text(
+                  _priorityLabel(message.priority),
+                  style: AppTypography.xs.copyWith(color: priorityColors.foreground),
+                ),
+              ),
+              SkaBadge(
+                text: message.userName,
+                variant: BadgeVariant.secondary,
+                small: true,
+              ),
+              if (message.isTargeted)
+                SkaBadge(
+                  text: 'Til: ${message.targetDisplayName}',
+                  variant: BadgeVariant.outline,
+                  small: true,
+                ),
+              if (isUnread)
+                SkaBadge(
+                  text: 'Ny',
+                  variant: BadgeVariant.error,
+                  small: true,
+                ),
+            ],
+          ),
+          if (parent != null) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Container(
+              padding: AppSpacing.p3,
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: AppRadius.radiusMd,
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Text(
+                'Svar paa: ${parent.userName} - ${_truncateText(parent.text, 80)}',
+                style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.s3),
+          Text(
+            message.text,
+            style: AppTypography.base.copyWith(color: AppColors.foreground),
+          ),
+          const SizedBox(height: AppSpacing.s3),
+          Row(
+            children: [
+              Icon(Icons.schedule, size: 14, color: AppColors.mutedForeground),
+              const SizedBox(width: 4),
+              Text(
+                _formatMessageTimestamp(message.timestamp),
+                style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+              ),
+              const Spacer(),
+              if (isUnread)
+                SkaButton(
+                  variant: ButtonVariant.outline,
+                  size: ButtonSize.sm,
+                  icon: const Icon(Icons.check_circle_outline, size: 14),
+                  text: 'Laest',
+                  onPressed: () => _markMessageRead(message),
+                ),
+              const SizedBox(width: AppSpacing.s2),
+              SkaButton(
+                variant: ButtonVariant.ghost,
+                size: ButtonSize.sm,
+                icon: const Icon(Icons.reply, size: 14),
+                text: 'Svar',
+                onPressed: () => _showNewMessageDialog(
+                  allUsers: allUsers,
+                  currentUser: currentUser,
+                  replyTo: message,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showNewMessageDialog({
+    required List<User> allUsers,
+    required User? currentUser,
+    SagMessage? replyTo,
+  }) async {
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingen bruger logget ind')),
+      );
+      return;
+    }
+
+    final messageController = TextEditingController();
+    String? targetUserId = replyTo?.userId;
+    String messageType = 'message';
+    String priority = 'normal';
+    final speech = stt.SpeechToText();
+    bool speechAvailable = false;
+    bool isRecording = false;
+    void Function(void Function())? updateDialogState;
+
+    void setDialogStateSafely(void Function() fn) {
+      if (updateDialogState != null) {
+        updateDialogState!(fn);
+      }
+    }
+
+    Future<void> stopListening() async {
+      if (!isRecording) return;
+      await speech.stop();
+      setDialogStateSafely(() => isRecording = false);
+      if (updateDialogState == null) {
+        isRecording = false;
+      }
+    }
+
+    Future<void> startListening() async {
+      if (isRecording) return;
+
+      if (!speechAvailable) {
+        speechAvailable = await speech.initialize(
+          onStatus: (status) {
+            if (status == 'done' || status == 'notListening') {
+              setDialogStateSafely(() => isRecording = false);
+            }
+          },
+          onError: (error) {
+            setDialogStateSafely(() => isRecording = false);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Tale-til-tekst fejlede: ${error.errorMsg}'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          },
+        );
+      }
+
+      if (!speechAvailable) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Tale-til-tekst er ikke understottet paa denne enhed.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      setDialogStateSafely(() => isRecording = true);
+      await speech.listen(
+        localeId: 'da_DK',
+        onResult: (result) {
+          if (!result.finalResult) return;
+          final recognized = result.recognizedWords.trim();
+          if (recognized.isEmpty) return;
+
+          setDialogStateSafely(() {
+            final existing = messageController.text.trim();
+            final next = existing.isEmpty ? recognized : '$existing $recognized';
+            messageController.text = next;
+            messageController.selection = TextSelection.fromPosition(
+              TextPosition(offset: next.length),
+            );
+          });
+        },
+      );
+    }
+
+    if (targetUserId == currentUser.id) {
+      targetUserId = null;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          updateDialogState = setDialogState;
+          return AlertDialog(
+          title: Text(replyTo == null ? 'Ny besked' : 'Svar til ${replyTo.userName}'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (replyTo != null) ...[
+                  Container(
+                    padding: AppSpacing.p3,
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundSecondary,
+                      borderRadius: AppRadius.radiusMd,
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Text(
+                      'Svarer paa: ${_truncateText(replyTo.text, 120)}',
+                      style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s4),
+                ],
+                Text('Send til', style: AppTypography.smMedium),
+                const SizedBox(height: AppSpacing.s2),
+                DropdownButtonFormField<String?>(
+                  value: targetUserId,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Alle medarbejdere'),
+                    ),
+                    ...allUsers.map((user) => DropdownMenuItem<String?>(
+                          value: user.id,
+                          child: Text(user.name),
+                        )),
+                  ],
+                  onChanged: (value) => setDialogState(() => targetUserId = value),
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                Text('Type', style: AppTypography.smMedium),
+                const SizedBox(height: AppSpacing.s2),
+                DropdownButtonFormField<String>(
+                  value: messageType,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'message', child: Text('Besked')),
+                    DropdownMenuItem(value: 'question', child: Text('Spoergsmaal')),
+                    DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
+                  ],
+                  onChanged: (value) => setDialogState(() => messageType = value ?? 'message'),
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                Text('Prioritet', style: AppTypography.smMedium),
+                const SizedBox(height: AppSpacing.s2),
+                DropdownButtonFormField<String>(
+                  value: priority,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'low', child: Text('Lav')),
+                    DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                    DropdownMenuItem(value: 'high', child: Text('Hoj')),
+                  ],
+                  onChanged: (value) => setDialogState(() => priority = value ?? 'normal'),
+                ),
+                const SizedBox(height: AppSpacing.s4),
+                SkaInput(
+                  label: 'Besked',
+                  placeholder: 'Skriv din besked...',
+                  controller: messageController,
+                  maxLines: 4,
+                  minLines: 2,
+                ),
+                const SizedBox(height: AppSpacing.s3),
+                Row(
+                  children: [
+                    SkaButton(
+                      variant: isRecording ? ButtonVariant.destructive : ButtonVariant.outline,
+                      size: ButtonSize.sm,
+                      icon: Icon(isRecording ? Icons.mic_off : Icons.mic, size: 16),
+                      text: isRecording ? 'Stop optagelse' : 'Tale-til-tekst',
+                      onPressed: isRecording ? stopListening : startListening,
+                    ),
+                    if (isRecording) ...[
+                      const SizedBox(width: AppSpacing.s3),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.s2),
+                      Text(
+                        'Lytter...',
+                        style: AppTypography.xs.copyWith(color: AppColors.error),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            SkaButton(
+              variant: ButtonVariant.ghost,
+              size: ButtonSize.sm,
+              text: 'Annuller',
+              onPressed: () async {
+                await stopListening();
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                }
+              },
+            ),
+            SkaButton(
+              variant: ButtonVariant.primary,
+              size: ButtonSize.sm,
+              icon: const Icon(Icons.send, size: 16),
+              text: 'Send besked',
+              onPressed: () async {
+                await stopListening();
+                final text = messageController.text.trim();
+                if (text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Indtast en besked')),
+                  );
+                  return;
+                }
+
+                String? targetUserName;
+                if (targetUserId != null) {
+                  final targetUser = allUsers.firstWhere(
+                    (u) => u.id == targetUserId,
+                    orElse: () => currentUser,
+                  );
+                  targetUserName = targetUser.name;
+                }
+
+                final msg = SagMessage(
+                  id: _uuid.v4(),
+                  sagId: widget.sagId,
+                  userId: currentUser.id,
+                  userName: currentUser.name,
+                  text: text,
+                  timestamp: DateTime.now().toIso8601String(),
+                  targetUserId: targetUserId,
+                  targetUserName: targetUserName,
+                  priority: priority,
+                  messageType: messageType,
+                  parentMessageId: replyTo?.id,
+                  isRead: false,
+                  readAt: null,
+                );
+
+                await _dbService.addMessage(msg);
+                if (mounted) {
+                  setState(() {
+                    _messages = _dbService.getMessagesBySag(widget.sagId);
+                    _activityLogs = _dbService.getActivityLogsBySag(widget.sagId);
+                  });
+                }
+
+                if (context.mounted) {
+                  Navigator.pop(dialogContext);
+                }
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        targetUserId == null
+                            ? 'Besked sendt til alle medarbejdere'
+                            : 'Besked sendt til ${targetUserName ?? "valgt medarbejder"}',
+                      ),
+                      backgroundColor: AppColors.success,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+          );
+        },
+      ),
+    );
+
+    updateDialogState = null;
+    await stopListening();
+    messageController.dispose();
+  }
+
+  Future<void> _markMessageRead(SagMessage message) async {
+    if (message.isRead == true) return;
+
+    final updated = _copyMessage(
+      message,
+      isRead: true,
+      readAt: DateTime.now().toIso8601String(),
+    );
+    await _dbService.updateMessage(updated);
+    if (mounted) {
+      setState(() {
+        _messages = _dbService.getMessagesBySag(widget.sagId);
+      });
+    }
+  }
+
+  SagMessage _copyMessage(
+    SagMessage message, {
+    bool? isRead,
+    String? readAt,
+  }) {
+    return SagMessage(
+      id: message.id,
+      sagId: message.sagId,
+      userId: message.userId,
+      userName: message.userName,
+      text: message.text,
+      timestamp: message.timestamp,
+      targetUserId: message.targetUserId,
+      targetUserName: message.targetUserName,
+      priority: message.priority,
+      messageType: message.messageType,
+      parentMessageId: message.parentMessageId,
+      isRead: isRead ?? message.isRead,
+      readAt: readAt ?? message.readAt,
+    );
+  }
+
+  String _priorityLabel(String? priority) {
+    switch (priority) {
+      case 'high':
+        return 'Hoj';
+      case 'low':
+        return 'Lav';
+      default:
+        return 'Normal';
+    }
+  }
+
+  _PriorityColors _getPriorityColors(String? priority) {
+    switch (priority) {
+      case 'high':
+        return _PriorityColors(
+          background: AppColors.errorLight,
+          foreground: AppColors.error,
+          border: AppColors.error.withOpacity(0.3),
+        );
+      case 'low':
+        return _PriorityColors(
+          background: AppColors.backgroundSecondary,
+          foreground: AppColors.mutedForeground,
+          border: AppColors.borderLight,
+        );
+      default:
+        return _PriorityColors(
+          background: AppColors.blue50,
+          foreground: AppColors.blue700,
+          border: AppColors.blue200,
+        );
+    }
+  }
+
+  IconData _messageTypeIcon(String? type) {
+    switch (type) {
+      case 'urgent':
+        return Icons.error_outline;
+      case 'question':
+        return Icons.help_outline;
+      default:
+        return Icons.chat_bubble_outline;
+    }
+  }
+
+  Color _messageTypeColor(String? type) {
+    switch (type) {
+      case 'urgent':
+        return AppColors.error;
+      case 'question':
+        return AppColors.primary;
+      default:
+        return AppColors.mutedForeground;
+    }
+  }
+
+  String _formatMessageTimestamp(String isoDate) {
+    try {
+      final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inHours < 24) {
+        final hour = date.hour.toString().padLeft(2, '0');
+        final minute = date.minute.toString().padLeft(2, '0');
+        return '$hour:$minute';
+      }
+
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      return '$day-$month';
+    } catch (_) {
+      return isoDate;
+    }
+  }
+
+  String _truncateText(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    return '${text.substring(0, maxLength)}...';
+  }
+  // ignore: unused_element
   Widget _buildActionButtons() {
     return Column(
       children: [
@@ -1668,6 +2923,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildRecentLogsSection() {
     return _buildSection(
       title: 'Seneste registreringer',
@@ -1705,7 +2961,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           child: ListTile(
             leading: const Icon(Icons.timer_outlined),
             title: Text('${log.type} - ${log.hours} timer'),
-            subtitle: Text('${_formatDate(log.date)} - ${log.user ?? 'Ukendt'}'),
+            subtitle: Text('${_formatDate(log.date)} - ${log.user}'),
             trailing: Text('${log.rate.toStringAsFixed(0)} kr/t'),
           ),
         );
@@ -1725,7 +2981,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           child: ListTile(
             leading: const Icon(Icons.inventory_2_outlined),
             title: Text('${log.action} - ${log.category}'),
-            subtitle: Text('${_formatDate(log.timestamp)} - ${log.user ?? 'Ukendt'}'),
+            subtitle: Text('${_formatDate(log.timestamp)} - ${log.user}'),
             trailing: log.data['count'] != null
                 ? Text('Antal: ${log.data['count']}')
                 : null,
@@ -1999,7 +3255,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                     if (hasOverride)
                       IconButton(
                         icon: const Icon(Icons.close, size: 20, color: Colors.red),
-                        onPressed: () => _deleteSagPris(sagPris!),
+                        onPressed: () => _deleteSagPris(sagPris),
                         tooltip: 'Fjern tilpasning',
                       ),
                   ],
@@ -2174,3 +3430,16 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     }
   }
 }
+
+class _PriorityColors {
+  final Color background;
+  final Color foreground;
+  final Color border;
+
+  const _PriorityColors({
+    required this.background,
+    required this.foreground,
+    required this.border,
+  });
+}
+

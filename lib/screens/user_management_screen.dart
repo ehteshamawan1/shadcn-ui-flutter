@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../models/user.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_badge.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -34,29 +41,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Tilføj ny bruger'),
+        title: const Text('Tilfoej ny bruger'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              SkaInput(
+                label: 'Navn',
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Navn',
-                  border: OutlineInputBorder(),
-                ),
               ),
-              const SizedBox(height: 16),
-              TextField(
+              const SizedBox(height: AppSpacing.s4),
+              SkaInput(
+                label: 'PIN (4 cifre)',
                 controller: pinController,
-                decoration: const InputDecoration(
-                  labelText: 'PIN (4 cifre)',
-                  border: OutlineInputBorder(),
-                ),
                 keyboardType: TextInputType.number,
-                maxLength: 4,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.s4),
               StatefulBuilder(
                 builder: (context, setDialogState) => DropdownButtonFormField<String>(
                   initialValue: selectedRole,
@@ -78,20 +78,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
         ),
         actions: [
-          TextButton(
+          SkaButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuller'),
+            variant: ButtonVariant.ghost,
+            text: 'Annuller',
           ),
-          ElevatedButton(
+          SkaButton(
             onPressed: () async {
               if (nameController.text.isEmpty || pinController.text.length != 4) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Navn og PIN (4 cifre) er påkrævet')),
+                  const SnackBar(content: Text('Navn og PIN (4 cifre) er paakraevet')),
                 );
                 return;
               }
 
-              // Check for duplicate PIN
               final existingUserWithPin = _users.where((u) => u.pin == pinController.text).toList();
               if (existingUserWithPin.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -113,11 +113,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 Navigator.pop(context);
                 _loadUsers();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Bruger tilføjet')),
+                  const SnackBar(content: Text('Bruger tilfoejet')),
                 );
               }
             },
-            child: const Text('Tilføj'),
+            variant: ButtonVariant.primary,
+            text: 'Tilfoej',
           ),
         ],
       ),
@@ -137,24 +138,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              SkaInput(
+                label: 'Navn',
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Navn',
-                  border: OutlineInputBorder(),
-                ),
               ),
-              const SizedBox(height: 16),
-              TextField(
+              const SizedBox(height: AppSpacing.s4),
+              SkaInput(
+                label: 'PIN (4 cifre)',
                 controller: pinController,
-                decoration: const InputDecoration(
-                  labelText: 'PIN (4 cifre)',
-                  border: OutlineInputBorder(),
-                ),
                 keyboardType: TextInputType.number,
-                maxLength: 4,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.s4),
               StatefulBuilder(
                 builder: (context, setDialogState) => DropdownButtonFormField<String>(
                   initialValue: selectedRole,
@@ -176,20 +170,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
         ),
         actions: [
-          TextButton(
+          SkaButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuller'),
+            variant: ButtonVariant.ghost,
+            text: 'Annuller',
           ),
-          ElevatedButton(
+          SkaButton(
             onPressed: () async {
               if (nameController.text.isEmpty || pinController.text.length != 4) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Navn og PIN (4 cifre) er påkrævet')),
+                  const SnackBar(content: Text('Navn og PIN (4 cifre) er paakraevet')),
                 );
                 return;
               }
 
-              // Check for duplicate PIN (exclude current user)
               final existingUserWithPin = _users.where((u) => u.pin == pinController.text && u.id != user.id).toList();
               if (existingUserWithPin.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -215,7 +209,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 );
               }
             },
-            child: const Text('Gem'),
+            variant: ButtonVariant.primary,
+            text: 'Gem',
           ),
         ],
       ),
@@ -229,11 +224,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         title: const Text('Slet bruger'),
         content: Text('Er du sikker på at du vil slette ${user.name}?'),
         actions: [
-          TextButton(
+          SkaButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuller'),
+            variant: ButtonVariant.ghost,
+            text: 'Annuller',
           ),
-          ElevatedButton(
+          SkaButton(
             onPressed: () async {
               await _dbService.deleteUser(user.id);
               if (mounted) {
@@ -244,8 +240,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Slet'),
+            variant: ButtonVariant.destructive,
+            text: 'Slet',
           ),
         ],
       ),
@@ -290,20 +286,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Ingen brugere',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: AppTypography.lgSemibold.copyWith(
+                      color: AppColors.mutedForeground,
+                    ),
                   ),
                 ],
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(8),
+              padding: AppSpacing.p4,
               itemCount: _users.length,
               itemBuilder: (context, index) {
                 final user = _users[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                return SkaCard(
+                  padding: EdgeInsets.zero,
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: _getRoleColor(user.role).withValues(alpha: 0.2),
@@ -318,27 +314,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     title: Text(user.name),
                     subtitle: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getRoleColor(user.role).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            _getRoleLabel(user.role),
-                            style: TextStyle(
-                              color: _getRoleColor(user.role),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                        SkaBadge(
+                          text: _getRoleLabel(user.role),
+                          variant: BadgeVariant.secondary,
+                          small: true,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'PIN: ${user.pin}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[600],
-                              ),
+                          style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                         ),
                       ],
                     ),

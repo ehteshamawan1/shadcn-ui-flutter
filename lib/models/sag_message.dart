@@ -30,6 +30,27 @@ class SagMessage extends HiveObject {
   @HiveField(7)
   String? targetUserName;
 
+  // Enhanced messaging fields (Phase 2)
+  /// Message priority: 'low', 'normal', 'high'
+  @HiveField(8)
+  String? priority;
+
+  /// Message type: 'message', 'question', 'urgent'
+  @HiveField(9)
+  String? messageType;
+
+  /// Parent message ID for threading
+  @HiveField(10)
+  String? parentMessageId;
+
+  /// Read status
+  @HiveField(11)
+  bool? isRead;
+
+  /// Read timestamp
+  @HiveField(12)
+  String? readAt;
+
   SagMessage({
     required this.id,
     required this.sagId,
@@ -39,6 +60,11 @@ class SagMessage extends HiveObject {
     required this.timestamp,
     this.targetUserId,
     this.targetUserName,
+    this.priority,
+    this.messageType,
+    this.parentMessageId,
+    this.isRead,
+    this.readAt,
   });
 
   /// Check if message is targeted to a specific employee
@@ -66,6 +92,11 @@ class SagMessage extends HiveObject {
         'timestamp': timestamp,
         'targetUserId': targetUserId,
         'targetUserName': targetUserName,
+        'priority': priority,
+        'messageType': messageType,
+        'parentMessageId': parentMessageId,
+        'isRead': isRead,
+        'readAt': readAt,
       };
 
   factory SagMessage.fromJson(Map<String, dynamic> json) => SagMessage(
@@ -77,5 +108,10 @@ class SagMessage extends HiveObject {
         timestamp: json['timestamp'] as String,
         targetUserId: json['targetUserId'] as String?,
         targetUserName: json['targetUserName'] as String?,
+        priority: json['priority'] as String? ?? 'normal',
+        messageType: json['messageType'] as String? ?? 'message',
+        parentMessageId: json['parentMessageId'] as String?,
+        isRead: json['isRead'] as bool? ?? false,
+        readAt: json['readAt'] as String?,
       );
 }

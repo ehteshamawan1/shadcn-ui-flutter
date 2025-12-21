@@ -16,6 +16,7 @@ import '../models/app_setting.dart';
 import '../models/kostpris.dart';
 import 'sync_service.dart';
 import 'settings_service.dart';
+import 'notification_manager.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -42,6 +43,7 @@ class DatabaseService {
 
   final _uuid = const Uuid();
   final SyncService _syncService = SyncService();
+  final NotificationManager _notificationManager = NotificationManager();
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -204,6 +206,7 @@ class DatabaseService {
       newData: user.toJson(),
       userName: byUserName,
     );
+
   }
 
   Future<void> updateUser(User user, {String? byUserName}) async {
@@ -293,6 +296,52 @@ class DatabaseService {
     );
   }
 
+  /// Update sag without creating an activity log entry (used for inline edits)
+  Future<void> updateSagQuietly(Sag sag) async {
+    await _sagerBox.put(sag.id, sag);
+    await _syncService.queueChange(
+      entityType: 'sag',
+      operation: 'upsert',
+      payload: sag.toJson(),
+    );
+  }
+
+  /// Update attention fields without creating a full activity log entry
+  Future<void> updateSagAttention({
+    required String sagId,
+    required bool needsAttention,
+    String? note,
+    String? acknowledgedBy,
+    String? acknowledgedAt,
+  }) async {
+    final sag = _sagerBox.get(sagId);
+    if (sag == null) return;
+
+    sag.needsAttention = needsAttention;
+    if (needsAttention) {
+      sag.attentionNote = note;
+      sag.attentionAcknowledgedAt = null;
+      sag.attentionAcknowledgedBy = null;
+    } else {
+      if (note != null) {
+        sag.attentionNote = note;
+      }
+      sag.attentionAcknowledgedAt = acknowledgedAt;
+      sag.attentionAcknowledgedBy = acknowledgedBy;
+    }
+
+    final now = DateTime.now().toIso8601String();
+    sag.opdateretDato = now;
+    sag.updatedAt = now;
+
+    await _sagerBox.put(sag.id, sag);
+    await _syncService.queueChange(
+      entityType: 'sag',
+      operation: 'upsert',
+      payload: sag.toJson(),
+    );
+  }
+
   Future<void> deleteSag(String id) async {
     final existing = _sagerBox.get(id);
     await _sagerBox.delete(id);
@@ -323,7 +372,7 @@ class DatabaseService {
       entityType: 'affugter',
       action: 'create',
       entityId: affugter.id,
-      description: 'Ny affugter oprettet: ${affugter.nr} (${affugter.maerke ?? ''} ${affugter.model ?? ''})',
+      description: 'Ny affugter oprettet: ${affugter.nr} (${affugter.maerke} ${affugter.model ?? ''})',
       newData: affugter.toJson(),
       userName: byUserName,
     );
@@ -422,6 +471,35 @@ class DatabaseService {
       description: '${log.category} ${log.action} (antal ${log.data['count'] ?? 1})',
       user: log.user,
     );
+
+    final notifiableActions = ['opsaet', 'tilfoej', 'nedtag', 'nedtagning', 'delvis_nedtagning'];
+    if (notifiableActions.contains(log.action)) {
+      final notificationType = (log.action == 'opsaet' || log.action == 'tilfoej')
+          ? 'equipment_added'
+          : 'equipment_removed';
+      final details = {
+        'category': log.category,
+        'action': log.action,
+        'quantity': log.data['quantity'] ?? 1,
+        'type': log.data['type'] ?? log.category,
+        'maskinNr': log.data['maskinNr'] ?? log.data['equipmentNr'],
+        'prisPrDag': log.data['prisPrDag'] ?? log.data['dailyRate'],
+        'effekt': log.data['effekt'] ?? log.data['kw'],
+        'blokNavn': log.data['blokNavn'],
+        'note': log.note,
+      };
+
+      final notification = await _notificationManager.addEquipmentNotification(
+        log.sagId,
+        notificationType,
+        details,
+      );
+      await updateSagAttention(
+        sagId: log.sagId,
+        needsAttention: true,
+        note: notification.message,
+      );
+    }
   }
 
   List<EquipmentLog> getEquipmentLogsBySag(String sagId) {
@@ -449,6 +527,21 @@ class DatabaseService {
       description: '${log.type} - ${log.hours} t',
       user: log.user,
     );
+
+    final typeLabel = log.type == 'Andet' ? (log.customType ?? 'Andet') : log.type;
+    final notification = await _notificationManager.addTimerNotification(
+      log.sagId,
+      {
+        'action': 'stopped',
+        'category': typeLabel,
+        'duration': (log.hours * 60).round(),
+      },
+    );
+    await updateSagAttention(
+      sagId: log.sagId,
+      needsAttention: true,
+      note: notification.message,
+    );
   }
 
   List<TimerLog> getTimerLogsBySag(String sagId) {
@@ -474,6 +567,19 @@ class DatabaseService {
       type: 'blok',
       action: 'create',
       description: 'Blok oprettet: ${blok.navn}',
+    );
+
+    final notification = await _notificationManager.addBlokNotification(
+      blok.sagId,
+      {
+        'action': 'created',
+        'navn': blok.navn,
+      },
+    );
+    await updateSagAttention(
+      sagId: blok.sagId,
+      needsAttention: true,
+      note: notification.message,
     );
   }
 
@@ -536,6 +642,20 @@ class DatabaseService {
       description: 'Færdigmelding: ${completion.amountCompleted} ${completion.completionType}',
       user: completion.user,
     );
+    final blok = _blokkeBox.get(completion.blokId);
+    final blokNavn = blok?.navn ?? 'Blok';
+    final notification = await _notificationManager.addBlokNotification(
+      completion.sagId,
+      {
+        'action': 'completed',
+        'navn': blokNavn,
+      },
+    );
+    await updateSagAttention(
+      sagId: completion.sagId,
+      needsAttention: true,
+      note: notification.message,
+    );
   }
 
   List<BlokCompletion> getBlokCompletionsByBlok(String blokId) {
@@ -565,6 +685,15 @@ class DatabaseService {
       action: 'create',
       description: 'Ny besked fra ${message.userName}',
       user: message.userName,
+    );
+  }
+
+  Future<void> updateMessage(SagMessage message) async {
+    await _messagesBox.put(message.id, message);
+    await _syncService.queueChange(
+      entityType: 'message',
+      operation: 'upsert',
+      payload: message.toJson(),
     );
   }
 

@@ -67,6 +67,25 @@ class Sag extends HiveObject {
   @HiveField(20)
   String? updatedAt;
 
+  // Attention/notification system fields (Phase 2)
+  @HiveField(21)
+  bool? needsAttention;
+
+  @HiveField(22)
+  String? attentionNote;
+
+  @HiveField(23)
+  String? attentionAcknowledgedAt;
+
+  @HiveField(24)
+  String? attentionAcknowledgedBy;
+
+  @HiveField(25)
+  String? postnummer;
+
+  @HiveField(26)
+  String? by;
+
   Sag({
     required this.id,
     required this.sagsnr,
@@ -89,6 +108,12 @@ class Sag extends HiveObject {
     required this.opdateretDato,
     this.createdAt,
     this.updatedAt,
+    this.needsAttention,
+    this.attentionNote,
+    this.attentionAcknowledgedAt,
+    this.attentionAcknowledgedBy,
+    this.postnummer,
+    this.by,
   });
 
   Map<String, dynamic> toJson() => {
@@ -113,6 +138,12 @@ class Sag extends HiveObject {
         'opdateretDato': opdateretDato,
         'createdAt': createdAt,
         'updatedAt': updatedAt,
+        'needsAttention': needsAttention,
+        'attentionNote': attentionNote,
+        'attentionAcknowledgedAt': attentionAcknowledgedAt,
+        'attentionAcknowledgedBy': attentionAcknowledgedBy,
+        'postnummer': postnummer,
+        'by': by,
       };
 
   factory Sag.fromJson(Map<String, dynamic> json) => Sag(
@@ -137,5 +168,11 @@ class Sag extends HiveObject {
         opdateretDato: json['opdateretDato'] as String,
         createdAt: json['createdAt'] as String?,
         updatedAt: json['updatedAt'] as String?,
+        needsAttention: json['needsAttention'] as bool?,
+        attentionNote: json['attentionNote'] as String?,
+        attentionAcknowledgedAt: json['attentionAcknowledgedAt'] as String?,
+        attentionAcknowledgedBy: json['attentionAcknowledgedBy'] as String?,
+        postnummer: json['postnummer'] as String?,
+        by: json['by'] as String?,
       );
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
-import '../services/auth_service.dart';
 import '../models/activity_log.dart';
 import '../models/sag.dart';
 import '../widgets/filter_widget.dart';
-import '../providers/theme_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
 
 /// Dedicated screen for viewing all activity logs across the system
 class ActivityLogScreen extends StatefulWidget {
@@ -18,8 +21,6 @@ class ActivityLogScreen extends StatefulWidget {
 
 class _ActivityLogScreenState extends State<ActivityLogScreen> {
   final _dbService = DatabaseService();
-  final _authService = AuthService();
-
   List<ActivityLog> _allLogs = [];
   List<ActivityLog> _filteredLogs = [];
   List<Sag> _sager = [];
@@ -278,21 +279,21 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
           label: 'I dag',
           count: _todayLogs,
           icon: Icons.today,
-          color: Colors.green,
+          color: AppColors.success,
         ),
         FilterOption(
           value: 'sag',
           label: 'Sager',
           count: entityCounts['sag'] ?? 0,
           icon: Icons.folder,
-          color: Colors.blue,
+          color: AppColors.primary,
         ),
         FilterOption(
           value: 'equipment',
           label: 'Udstyr',
           count: entityCounts['equipment'] ?? 0,
           icon: Icons.inventory_2,
-          color: Colors.orange,
+          color: AppColors.warning,
         ),
       ],
       selectedValue: _selectedEntityType == 'alle' ? (_selectedPeriod == 'today' ? 'today' : 'alle') : _selectedEntityType,
@@ -320,7 +321,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
     final actions = _allLogs.map((l) => l.action).toSet().toList()..sort();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: AppSpacing.symmetric(horizontal: AppSpacing.s4),
       child: FilterBar(
         filters: [
           FilterConfig(
@@ -420,23 +421,24 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
           Icon(
             Icons.history,
             size: 64,
-            color: theme.colorScheme.outline,
+            color: AppColors.mutedForeground,
           ),
           const SizedBox(height: 16),
           Text(
             _allLogs.isEmpty
                 ? 'Ingen aktiviteter registreret endnu'
                 : 'Ingen aktiviteter matcher filtrene',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.outline,
+            style: AppTypography.smSemibold.copyWith(
+              color: AppColors.mutedForeground,
             ),
           ),
           if (_allLogs.isNotEmpty) ...[
             const SizedBox(height: 8),
-            TextButton.icon(
+            SkaButton(
               onPressed: _resetFilters,
+              variant: ButtonVariant.ghost,
               icon: const Icon(Icons.clear_all),
-              label: const Text('Nulstil filtre'),
+              text: 'Nulstil filtre',
             ),
           ],
         ],
@@ -446,7 +448,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
 
   Widget _buildActivityList(ThemeData theme) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: AppSpacing.symmetric(horizontal: AppSpacing.s4),
       itemCount: _filteredLogs.length,
       itemBuilder: (context, index) {
         final log = _filteredLogs[index];
@@ -482,13 +484,11 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
       formattedTime = log.timestamp;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => _showActivityDetails(log),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+    return SkaCard(
+      padding: AppSpacing.p4,
+      onTap: () => _showActivityDetails(log),
+      child: Padding(
+          padding: EdgeInsets.zero,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -555,9 +555,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
                     // Description
                     Text(
                       log.displayDescription,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: AppTypography.smSemibold,
                     ),
 
                     const SizedBox(height: 4),
@@ -570,9 +568,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
                           const SizedBox(width: 4),
                           Text(
                             log.userName!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.outline,
-                            ),
+                            style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                           ),
                           const SizedBox(width: 12),
                         ],
@@ -580,9 +576,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
                         const SizedBox(width: 4),
                         Text(
                           formattedTime,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
+                          style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                         ),
                       ],
                     ),
@@ -598,7 +592,6 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 

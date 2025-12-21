@@ -7,7 +7,11 @@ import 'package:share_plus/share_plus.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
-import '../providers/theme_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
 import '../constants/roles_and_features.dart';
 import 'dropdown_settings_screen.dart';
 import 'admin_settings_screen.dart';
@@ -131,6 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         throw Exception('Ugyldig backup fil format');
       }
 
+      if (!mounted) return;
       // Show confirmation dialog
       final stats = backup['stats'] as Map<String, dynamic>?;
       final confirmed = await showDialog<bool>(
@@ -182,14 +187,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           actions: [
-            TextButton(
+            SkaButton(
+              text: 'Annuller',
+              variant: ButtonVariant.secondary,
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuller'),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            SkaButton(
+              text: 'Gendan',
+              variant: ButtonVariant.destructive,
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Gendan', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -285,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.p6,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -320,7 +326,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSyncStatusSection(ThemeData theme, int pendingChanges) {
     final isOnline = _syncService.isInitialSyncComplete;
 
-    return Card(
+    return SkaCard(
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -328,9 +335,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.sync, color: theme.colorScheme.primary),
+                const Icon(Icons.sync, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Synkronisering', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Synkronisering', style: AppTypography.smSemibold),
               ],
             ),
             const Divider(height: 24),
@@ -395,7 +402,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 8),
                 Text(
                   isOnline ? 'Online - Supabase tilsluttet' : 'Synkroniserer...',
-                  style: theme.textTheme.bodySmall,
+                  style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                 ),
               ],
             ),
@@ -404,8 +411,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Sync button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: SkaButton(
                 onPressed: _isSyncing ? null : _manualSync,
+                variant: ButtonVariant.primary,
                 icon: _isSyncing
                     ? const SizedBox(
                         width: 16,
@@ -413,7 +421,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.sync),
-                label: Text(_isSyncing ? 'Synkroniserer...' : 'Synkroniser nu'),
+                text: _isSyncing ? 'Synkroniserer...' : 'Synkroniser nu',
               ),
             ),
           ],
@@ -424,10 +432,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildDataOverviewSection(ThemeData theme) {
     if (_backupStats == null) {
-      return const Card(child: Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator())));
+      return const SkaCard(
+        padding: EdgeInsets.all(32),
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
-    return Card(
+    return SkaCard(
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -435,9 +447,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.storage, color: theme.colorScheme.primary),
+                const Icon(Icons.storage, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Data Oversigt', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Data oversigt', style: AppTypography.smSemibold),
               ],
             ),
             const Divider(height: 24),
@@ -465,17 +477,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.blue50,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.blue200),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.data_usage, color: AppColors.primary),
+                  const Icon(Icons.data_usage, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Text(
                     'Total: ${_backupStats!.totalItems} elementer',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                    style: AppTypography.smSemibold.copyWith(color: AppColors.primary),
                   ),
                 ],
               ),
@@ -498,11 +511,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             '$count',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+            style: AppTypography.lgSemibold.copyWith(color: color),
           ),
           Text(
             label,
-            style: TextStyle(fontSize: 11, color: color),
+            style: AppTypography.xs.copyWith(color: color),
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -511,7 +524,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildBackupSection(ThemeData theme) {
-    return Card(
+    return SkaCard(
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -519,9 +533,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.backup, color: theme.colorScheme.primary),
+                const Icon(Icons.backup, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Backup & Gendannelse', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Backup & gendannelse', style: AppTypography.smSemibold),
               ],
             ),
             const Divider(height: 24),
@@ -530,18 +544,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: AppColors.blue50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(color: AppColors.blue200),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                  const Icon(Icons.info_outline, color: AppColors.blue700, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Download en komplet backup af alle dine data. Filen gemmes i JSON format.',
-                      style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                      style: AppTypography.xs.copyWith(color: AppColors.blue700),
                     ),
                   ),
                 ],
@@ -552,12 +566,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Export button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: SkaButton(
                 onPressed: _isExporting ? null : _exportBackup,
+                variant: ButtonVariant.primary,
                 icon: _isExporting
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.download),
-                label: Text(_isExporting ? 'Eksporterer...' : 'Download Backup'),
+                text: _isExporting ? 'Eksporterer...' : 'Download backup',
               ),
             ),
             const SizedBox(height: 16),
@@ -566,37 +581,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: AppColors.warningLight,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: AppColors.warning),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_amber, color: Colors.orange.shade700, size: 20),
+                      const Icon(Icons.warning_amber, color: AppColors.warning, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'Gendan fra Backup',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+                        'Gendan fra backup',
+                        style: AppTypography.smSemibold.copyWith(color: AppColors.warning),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Gendannelse vil overskrive eksisterende data! Download altid en backup først.',
-                    style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
+                    style: AppTypography.xs.copyWith(color: AppColors.warning),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
+                    child: SkaButton(
                       onPressed: _isImporting ? null : _importBackup,
+                      variant: ButtonVariant.outline,
                       icon: _isImporting
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.upload),
-                      label: Text(_isImporting ? 'Importerer...' : 'Vælg Backup Fil'),
+                      text: _isImporting ? 'Importerer...' : 'Vaelg backup fil',
                     ),
                   ),
                 ],
@@ -609,7 +625,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAdministrationSection(ThemeData theme, bool canManageUsers, bool canManageDropdowns) {
-    return Card(
+    return SkaCard(
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -617,9 +634,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.admin_panel_settings, color: theme.colorScheme.primary),
+                const Icon(Icons.admin_panel_settings, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Administration', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Administration', style: AppTypography.smSemibold),
               ],
             ),
             const Divider(height: 24),
@@ -719,7 +736,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildActivityLogSection(ThemeData theme) {
-    return Card(
+    return SkaCard(
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -727,9 +745,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.history, color: theme.colorScheme.primary),
+                const Icon(Icons.history, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Aktivitetslog', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Aktivitetslog', style: AppTypography.smSemibold),
               ],
             ),
             const Divider(height: 24),

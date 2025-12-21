@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import '../services/database_service.dart';
-import '../services/auth_service.dart';
-import '../providers/theme_provider.dart';
-import '../models/sag.dart';
 import 'package:uuid/uuid.dart';
+import '../models/sag.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/responsive_builder.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 
 class NySagScreen extends StatefulWidget {
   const NySagScreen({super.key});
@@ -28,13 +34,13 @@ class _NySagScreenState extends State<NySagScreen> {
   final _kundensSagsrefController = TextEditingController();
   final _beskrivrelseController = TextEditingController();
 
-  String _selectedSagType = 'udtørring';
-  String _selectedRegion = 'sjælland';
+  String _selectedSagType = 'udtA,rring';
+  String _selectedRegion = 'sjAÝlland';
   final bool _isActive = true;
   bool _isSaving = false;
 
-  final List<String> _sagTypes = ['udtørring', 'varme', 'begge'];
-  final List<String> _regions = ['sjælland', 'fyn', 'jylland'];
+  final List<String> _sagTypes = ['udtA,rring', 'varme', 'begge'];
+  final List<String> _regions = ['sjAÝlland', 'fyn', 'jylland'];
 
   Future<void> _saveSag() async {
     if (!_formKey.currentState!.validate()) {
@@ -83,7 +89,7 @@ class _NySagScreenState extends State<NySagScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Return true to signal successful creation
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -109,282 +115,253 @@ class _NySagScreenState extends State<NySagScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ny Sag', style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onSurface)),
-            Text('Opret en ny sag', style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+            Text('Ny sag', style: AppTypography.lgSemibold),
+            Text(
+              'Opret en ny sag',
+              style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+            ),
           ],
         ),
         elevation: 0,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
         actions: [
-          TextButton.icon(
+          SkaButton(
             onPressed: () => Navigator.pop(context),
+            variant: ButtonVariant.ghost,
+            size: ButtonSize.sm,
             icon: const Icon(Icons.close, size: 18),
-            label: const Text('Annuller'),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
+            text: 'Annuller',
           ),
         ],
       ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
+          padding: AppSpacing.p6,
+          child: MaxWidthContainer(
+            maxWidth: 900,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Sag Information
-                _buildSection(
+                _buildSectionCard(
                   icon: Icons.folder_outlined,
-                  title: 'Sag Information',
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _sagsnrController,
-                            label: 'Sagsnummer',
-                            hint: '2025-001',
-                            icon: Icons.tag,
-                            required: true,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Sagsnummer er påkrævet';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildDropdown(
-                            value: _selectedSagType,
-                            label: 'Sag Type',
-                            icon: Icons.category_outlined,
-                            items: _sagTypes,
-                            onChanged: (value) {
-                              setState(() => _selectedSagType = value ?? 'udtørring');
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  title: 'Sag information',
+                  child: ResponsiveGrid(
+                    mobileColumns: 1,
+                    tabletColumns: 2,
+                    desktopColumns: 2,
+                    spacing: AppSpacing.s4,
+                    runSpacing: AppSpacing.s4,
+                    children: [
+                      SkaInput(
+                        label: 'Sagsnummer *',
+                        placeholder: '2025-001',
+                        controller: _sagsnrController,
+                        prefixIcon: const Icon(Icons.tag),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Sagsnummer er paakraevet';
+                          }
+                          return null;
+                        },
+                      ),
+                      _buildDropdown(
+                        label: 'Sag type',
+                        icon: Icons.category_outlined,
+                        value: _selectedSagType,
+                        items: _sagTypes,
+                        onChanged: (value) {
+                          setState(() => _selectedSagType = value ?? 'udtA,rring');
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Adresse
-                _buildSection(
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionCard(
                   icon: Icons.location_on_outlined,
                   title: 'Adresse',
-                  children: [
-                    _buildTextField(
-                      controller: _adresseController,
-                      label: 'Vejnavn og husnummer',
-                      hint: 'Eksempel Vej 123',
-                      icon: Icons.home_outlined,
-                      required: true,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Adresse er påkrævet';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: _buildTextField(
-                            controller: _postnrController,
+                  child: Column(
+                    children: [
+                      SkaInput(
+                        label: 'Vejnavn og husnummer *',
+                        placeholder: 'Eksempel Vej 123',
+                        controller: _adresseController,
+                        prefixIcon: const Icon(Icons.home_outlined),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Adresse er paakraevet';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                      ResponsiveGrid(
+                        mobileColumns: 1,
+                        tabletColumns: 2,
+                        desktopColumns: 2,
+                        spacing: AppSpacing.s4,
+                        runSpacing: AppSpacing.s4,
+                        children: [
+                          SkaInput(
                             label: 'Postnummer',
-                            hint: '0000',
-                            icon: Icons.mail_outline,
+                            placeholder: '0000',
+                            controller: _postnrController,
                             keyboardType: TextInputType.number,
+                            prefixIcon: const Icon(Icons.mail_outline),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 2,
-                          child: _buildTextField(
-                            controller: _byController,
+                          SkaInput(
                             label: 'By',
-                            hint: 'Bynavn',
-                            icon: Icons.location_city_outlined,
+                            placeholder: 'Bynavn',
+                            controller: _byController,
+                            prefixIcon: const Icon(Icons.location_city_outlined),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Kontaktoplysninger
-                _buildSection(
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionCard(
                   icon: Icons.contacts_outlined,
                   title: 'Kontaktoplysninger',
-                  children: [
-                    _buildTextField(
-                      controller: _byggelederController,
-                      label: 'Byggeleder',
-                      hint: 'Navn på byggeleder',
-                      icon: Icons.person_outline,
-                      required: true,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Byggeleder er påkrævet';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _byggelederTlfController,
+                  child: Column(
+                    children: [
+                      SkaInput(
+                        label: 'Byggeleder *',
+                        placeholder: 'Navn paa byggeleder',
+                        controller: _byggelederController,
+                        prefixIcon: const Icon(Icons.person_outline),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Byggeleder er paakraevet';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                      ResponsiveGrid(
+                        mobileColumns: 1,
+                        tabletColumns: 2,
+                        desktopColumns: 2,
+                        spacing: AppSpacing.s4,
+                        runSpacing: AppSpacing.s4,
+                        children: [
+                          SkaInput(
                             label: 'Telefon',
-                            hint: '12345678',
-                            icon: Icons.phone_outlined,
+                            placeholder: '12345678',
+                            controller: _byggelederTlfController,
                             keyboardType: TextInputType.phone,
+                            prefixIcon: const Icon(Icons.phone_outlined),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _byggelederEmailController,
+                          SkaInput(
                             label: 'Email',
-                            hint: 'email@example.com',
-                            icon: Icons.email_outlined,
+                            placeholder: 'email@example.com',
+                            controller: _byggelederEmailController,
                             keyboardType: TextInputType.emailAddress,
+                            prefixIcon: const Icon(Icons.email_outlined),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Bygherre Information
-                _buildSection(
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionCard(
                   icon: Icons.business_outlined,
-                  title: 'Bygherre Information',
-                  children: [
-                    _buildTextField(
-                      controller: _bygherreController,
-                      label: 'Bygherre',
-                      hint: 'Navn på bygherre/selskab',
-                      icon: Icons.apartment_outlined,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
+                  title: 'Bygherre information',
+                  child: Column(
+                    children: [
+                      SkaInput(
+                        label: 'Bygherre',
+                        placeholder: 'Navn paa bygherre/selskab',
+                        controller: _bygherreController,
+                        prefixIcon: const Icon(Icons.apartment_outlined),
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                      ResponsiveGrid(
+                        mobileColumns: 1,
+                        tabletColumns: 2,
+                        desktopColumns: 2,
+                        spacing: AppSpacing.s4,
+                        runSpacing: AppSpacing.s4,
+                        children: [
+                          SkaInput(
+                            label: 'CVR nummer',
+                            placeholder: '12345678',
                             controller: _cvrNrController,
-                            label: 'CVR Nummer',
-                            hint: '12345678',
-                            icon: Icons.business_center_outlined,
                             keyboardType: TextInputType.number,
+                            prefixIcon: const Icon(Icons.business_center_outlined),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildTextField(
+                          SkaInput(
+                            label: 'Kundens sagsreference',
+                            placeholder: 'Kundens interne reference',
                             controller: _kundensSagsrefController,
-                            label: 'Kundens Sagsreference',
-                            hint: 'Kundens interne reference',
-                            icon: Icons.receipt_long_outlined,
+                            prefixIcon: const Icon(Icons.receipt_long_outlined),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Projekt Detaljer
-                _buildSection(
+                const SizedBox(height: AppSpacing.s6),
+                _buildSectionCard(
                   icon: Icons.settings_outlined,
-                  title: 'Projekt Detaljer',
-                  children: [
-                    _buildDropdown(
-                      value: _selectedRegion,
-                      label: 'Region',
-                      icon: Icons.map_outlined,
-                      items: _regions,
-                      onChanged: (value) {
-                        setState(() => _selectedRegion = value ?? 'sjælland');
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _beskrivrelseController,
-                      label: 'Beskrivelse',
-                      hint: 'Beskriv sagen og eventuelle særlige forhold...',
-                      icon: Icons.description_outlined,
-                      maxLines: 4,
-                    ),
-                  ],
+                  title: 'Projekt detaljer',
+                  child: Column(
+                    children: [
+                      _buildDropdown(
+                        label: 'Region',
+                        icon: Icons.map_outlined,
+                        value: _selectedRegion,
+                        items: _regions,
+                        onChanged: (value) {
+                          setState(() => _selectedRegion = value ?? 'sjAÝlland');
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                      SkaInput(
+                        label: 'Beskrivelse',
+                        placeholder: 'Beskriv sagen og eventuelle saerlige forhold...',
+                        controller: _beskrivrelseController,
+                        prefixIcon: const Icon(Icons.description_outlined),
+                        maxLines: 4,
+                        minLines: 3,
+                      ),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 32),
-
-                // Action buttons
+                const SizedBox(height: AppSpacing.s6),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: SkaButton(
                         onPressed: _isSaving ? null : () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
-                        label: const Text('Annuller'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-                        ),
+                        variant: ButtonVariant.outline,
+                        size: ButtonSize.lg,
+                        text: 'Annuller',
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: AppSpacing.s4),
                     Expanded(
                       flex: 2,
-                      child: ElevatedButton.icon(
+                      child: SkaButton(
                         onPressed: _isSaving ? null : _saveSag,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.check_circle_outline),
-                        label: Text(_isSaving ? 'Opretter sag...' : 'Opret Sag'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                        ),
+                        variant: ButtonVariant.primary,
+                        size: ButtonSize.lg,
+                        fullWidth: true,
+                        loading: _isSaving,
+                        text: _isSaving ? 'Opretter sag...' : 'Opret sag',
+                        icon: _isSaving ? null : const Icon(Icons.check_circle_outline),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: AppSpacing.s8),
               ],
             ),
           ),
@@ -393,158 +370,65 @@ class _NySagScreenState extends State<NySagScreen> {
     );
   }
 
-  Widget _buildSection({
+  Widget _buildSectionCard({
     required IconData icon,
     required String title,
-    required List<Widget> children,
+    required Widget child,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppColors.slate700 : Colors.grey[200]!),
-        boxShadow: isDark ? [] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return SkaCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.slate800 : Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+          SkaCardHeader(
+            title: title,
+            trailing: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-              border: Border(
-                bottom: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[200]!),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
+              child: Icon(icon, size: 18, color: AppColors.primary),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            ),
-          ),
+          SkaCardContent(child: child),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool required = false,
-    int maxLines = 1,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        hintText: hint,
-        prefixIcon: Icon(icon, size: 20),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
-        ),
-        filled: true,
-        fillColor: isDark ? AppColors.slate800 : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
 
   Widget _buildDropdown({
-    required String value,
     required String label,
     required IconData icon,
+    required String value,
     required List<String> items,
     required void Function(String?) onChanged,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DropdownButtonFormField<String>(
       initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
-        filled: true,
-        fillColor: isDark ? AppColors.slate800 : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       items: items
           .map((item) => DropdownMenuItem(
                 value: item,
-                child: Text(item[0].toUpperCase() + item.substring(1)),
+                child: Text(_formatLabel(item)),
               ))
           .toList(),
       onChanged: onChanged,
     );
+  }
+
+  String _formatLabel(String value) {
+    switch (value) {
+      case 'udtA,rring':
+        return 'Udtorring';
+      case 'sjAÝlland':
+        return 'Sjaelland';
+      default:
+        return value[0].toUpperCase() + value.substring(1);
+    }
   }
 
   @override

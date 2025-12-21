@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
-import '../services/nfc_service.dart';
-import '../services/database_service.dart';
-import '../providers/theme_provider.dart';
-import '../models/affugter.dart';
 import 'package:uuid/uuid.dart';
+import '../models/affugter.dart';
+import '../services/database_service.dart';
+import '../services/nfc_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/responsive_builder.dart';
+import '../widgets/theme_toggle.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 
 class NFCScannerScreen extends StatefulWidget {
   final String? sagId;
@@ -20,7 +27,6 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
   final _manualIdController = TextEditingController();
 
   bool _isScanning = false;
-  NFCData? _lastScannedData;
   String? _scanError;
 
   @override
@@ -34,7 +40,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
     if (!isSupported && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('NFC er ikke tilgængelig på denne enhed'),
+          content: Text('NFC er ikke tilgaengelig paa denne enhed'),
           duration: Duration(seconds: 3),
         ),
       );
@@ -45,14 +51,12 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
     setState(() {
       _isScanning = true;
       _scanError = null;
-      _lastScannedData = null;
     });
 
     try {
       await _nfcService.startScanning(
         onRead: (nfcData) {
           setState(() {
-            _lastScannedData = nfcData;
             _isScanning = false;
           });
           if (nfcData.id.isEmpty || (nfcData.data?['blankTag'] == true)) {
@@ -76,6 +80,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
         _scanError = e.toString();
         _isScanning = false;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Fejl: $e')),
       );
@@ -114,7 +119,6 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
     }
   }
 
-
   void _showCreateNewTagDialog(String tagId) {
     final tagIdController = TextEditingController(text: tagId);
     final maerkeController = TextEditingController();
@@ -136,7 +140,6 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ERROR DISPLAY AT TOP - more visible to user
                   if (errorText != null) ...[
                     Container(
                       width: double.infinity,
@@ -203,8 +206,8 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'adsorption', child: Text('Udtørring - Adsorption')),
-                      DropdownMenuItem(value: 'kondens', child: Text('Udtørring - Kondens')),
+                      DropdownMenuItem(value: 'adsorption', child: Text('Udtoerring - Adsorption')),
+                      DropdownMenuItem(value: 'kondens', child: Text('Udtoerring - Kondens')),
                       DropdownMenuItem(value: 'varme', child: Text('Varme')),
                     ],
                     onChanged: (value) {
@@ -214,7 +217,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                     },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Vælg type';
+                        return 'Vaelg type';
                       }
                       return null;
                     },
@@ -223,12 +226,12 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                   TextFormField(
                     controller: maerkeController,
                     decoration: const InputDecoration(
-                      labelText: 'Mærke',
+                      labelText: 'Maerke',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Indtast mærke';
+                        return 'Indtast maerke';
                       }
                       return null;
                     },
@@ -247,7 +250,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                     value: writeToTag,
                     onChanged: (value) => setState(() => writeToTag = value),
                     title: const Text('Skriv til NFC-tag nu'),
-                    subtitle: const Text('Hold telefonen på tagget under skrivning'),
+                    subtitle: const Text('Hold telefonen paa tagget under skrivning'),
                   ),
                 ],
               ),
@@ -289,9 +292,8 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                         }
 
                         if (writeToTag) {
-                          // Show instruction to user
                           setState(() {
-                            errorText = 'Hold telefonen på NFC tagget nu...';
+                            errorText = 'Hold telefonen paa NFC tagget nu...';
                           });
 
                           final writeSuccess = await _nfcService.writeEquipmentToTag(
@@ -306,7 +308,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                           );
 
                           if (!writeSuccess) {
-                            throw Exception('NFC skrivning fejlede - prøv igen');
+                            throw Exception('NFC skrivning fejlede - proev igen');
                           }
                         }
 
@@ -330,17 +332,14 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                           _searchEquipment(tagNumber);
                         }
                       } catch (e) {
-                        String errorMsg = e.toString().replaceAll('Exception:', '').trim();
+                        final errorMsg = e.toString().replaceAll('Exception:', '').trim();
 
-                        // Reset NFC service state to allow retry
                         _nfcService.resetWriteState();
 
                         setState(() {
                           errorText = errorMsg;
                           isSaving = false;
                         });
-                        // Error is now displayed prominently at the TOP of the dialog
-                        // No SnackBar needed - it would appear BEHIND the dialog
                       }
                     },
               child: isSaving
@@ -381,14 +380,13 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Luk'),
           ),
-          // Search in database button
           OutlinedButton.icon(
             onPressed: () {
               Navigator.pop(context);
               _searchAndShowDatabaseDetails(nfcData.id);
             },
             icon: const Icon(Icons.search),
-            label: const Text('Søg i database'),
+            label: const Text('Soeg i database'),
           ),
           if (widget.sagId != null)
             ElevatedButton(
@@ -413,7 +411,6 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
         orElse: () => throw Exception('Udstyr ikke fundet i database'),
       );
 
-      // Show full database details
       _showDatabaseEquipmentDialog(affugter);
     } catch (e) {
       if (mounted) {
@@ -449,15 +446,12 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
             children: [
               _buildDetailRow('Nr', affugter.nr),
               _buildDetailRow('Type', affugter.type),
-              _buildDetailRow('Mærke', affugter.maerke),
+              _buildDetailRow('Maerke', affugter.maerke),
               if (affugter.model != null) _buildDetailRow('Model', affugter.model!),
               _buildDetailRow('Status', affugter.status),
-              if (affugter.currentSagId != null)
-                _buildDetailRow('Tilknyttet Sag', affugter.currentSagId!),
-              if (affugter.serie != null)
-                _buildDetailRow('Serienummer', affugter.serie!),
-              if (affugter.note != null)
-                _buildDetailRow('Note', affugter.note!),
+              if (affugter.currentSagId != null) _buildDetailRow('Tilknyttet Sag', affugter.currentSagId!),
+              if (affugter.serie != null) _buildDetailRow('Serienummer', affugter.serie!),
+              if (affugter.note != null) _buildDetailRow('Note', affugter.note!),
               _buildDetailRow('Oprettet', affugter.createdAt.substring(0, 10)),
             ],
           ),
@@ -514,305 +508,169 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('NFC Scanner'),
+        title: const Text('NFC scanner'),
         elevation: 0,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        actions: const [
+          ThemeToggle(),
+          SizedBox(width: 8),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Manual search - Highlighted section
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.1),
-                    AppColors.primary.withValues(alpha: 0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.edit_outlined,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Manuel indtastning',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  ),
-                            ),
-                            Text(
-                              'Indtast tag nummer manuelt',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _manualIdController,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurface,
+        padding: AppSpacing.p6,
+        child: MaxWidthContainer(
+          maxWidth: 900,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SkaCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkaCardHeader(
+                      title: 'Manuel indtastning',
+                      description: 'Indtast tag nummer manuelt for opslag.',
                     ),
-                    decoration: InputDecoration(
-                      labelText: 'Tag nummer',
-                      hintText: 'Indtast fx. 2-2345',
-                      prefixIcon: const Icon(Icons.tag, size: 20),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () {
-                          if (_manualIdController.text.isNotEmpty) {
-                            _searchEquipment(_manualIdController.text);
-                          }
-                        },
-                        tooltip: 'Søg',
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: isDark ? AppColors.slate700 : Colors.grey[300]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                      ),
-                      filled: true,
-                      fillColor: isDark ? AppColors.slate800 : Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                    ),
-                    onSubmitted: (value) {
-                      if (value.isNotEmpty) {
-                        _searchEquipment(value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        if (_manualIdController.text.isNotEmpty) {
-                          _searchEquipment(_manualIdController.text);
-                        }
-                      },
-                      icon: const Icon(Icons.search),
-                      label: const Text('Søg udstyr'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        _showCreateNewTagDialog(_manualIdController.text);
-                      },
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Programmer nyt NFC-tag'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
-                      ),
-                    ),
-                  ),
-            const SizedBox(height: 24),
-
-            // Divider with text
-            Row(
-              children: [
-                Expanded(child: Divider(color: isDark ? AppColors.slate700 : Colors.grey[300])),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'ELLER',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Expanded(child: Divider(color: isDark ? AppColors.slate700 : Colors.grey[300])),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // NFC scan
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? AppColors.slate700 : Colors.grey[200]!,
-                ),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.nfc,
-                          color: Colors.green[700],
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'NFC Scanning',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  ),
-                            ),
-                            Text(
-                              'Scan NFC tag automatisk',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: _isScanning
-                        ? Column(
+                    SkaCardContent(
+                      child: Column(
+                        children: [
+                          SkaInput(
+                            label: 'Tag nummer',
+                            placeholder: 'Indtast fx 2-2345',
+                            controller: _manualIdController,
+                            prefixIcon: const Icon(Icons.tag),
+                            onSubmitted: (value) {
+                              if (value.isNotEmpty) {
+                                _searchEquipment(value);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.s4),
+                          Row(
                             children: [
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 16),
-                              const Text('Venter på NFC-tag...'),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  await _nfcService.stopScanning();
-                                  setState(() => _isScanning = false);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                ),
-                                child: const Text('Stop scanning'),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.nfc,
-                                  size: 64,
-                                  color: Colors.green[700],
+                              Expanded(
+                                child: SkaButton(
+                                  onPressed: () {
+                                    if (_manualIdController.text.isNotEmpty) {
+                                      _searchEquipment(_manualIdController.text);
+                                    }
+                                  },
+                                  variant: ButtonVariant.primary,
+                                  size: ButtonSize.lg,
+                                  icon: const Icon(Icons.search),
+                                  text: 'Soeg udstyr',
                                 ),
                               ),
-                              const SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _startScanning,
-                                  icon: const Icon(Icons.nfc),
-                                  label: const Text('Start NFC Scanning'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green[700],
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
+                              const SizedBox(width: AppSpacing.s3),
+                              Expanded(
+                                child: SkaButton(
+                                  onPressed: () {
+                                    _showCreateNewTagDialog(_manualIdController.text);
+                                  },
+                                  variant: ButtonVariant.outline,
+                                  size: ButtonSize.lg,
+                                  icon: const Icon(Icons.edit_outlined),
+                                  text: 'Programmer tag',
                                 ),
                               ),
                             ],
                           ),
-                  ),
-                  if (_scanError != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red),
-                      ),
-                      child: Text(
-                        'Fejl: $_scanError',
-                        style: const TextStyle(color: Colors.red),
+                        ],
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s6),
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'ELLER',
+                      style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+                    ),
+                  ),
+                  const Expanded(child: Divider()),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.s6),
+              SkaCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkaCardHeader(
+                      title: 'NFC scanning',
+                      description: 'Scan NFC tag automatisk via enheden.',
+                    ),
+                    SkaCardContent(
+                      child: Column(
+                        children: [
+                          if (_isScanning)
+                            Column(
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: AppSpacing.s3),
+                                Text('Venter paa NFC-tag...', style: AppTypography.sm),
+                                const SizedBox(height: AppSpacing.s3),
+                                SkaButton(
+                                  onPressed: () async {
+                                    await _nfcService.stopScanning();
+                                    setState(() => _isScanning = false);
+                                  },
+                                  variant: ButtonVariant.destructive,
+                                  text: 'Stop scanning',
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.successLight,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.nfc, size: 64, color: AppColors.success),
+                                ),
+                                const SizedBox(height: AppSpacing.s4),
+                                SkaButton(
+                                  onPressed: _startScanning,
+                                  variant: ButtonVariant.primary,
+                                  size: ButtonSize.lg,
+                                  icon: const Icon(Icons.nfc),
+                                  text: 'Start NFC scanning',
+                                ),
+                              ],
+                            ),
+                          if (_scanError != null) ...[
+                            const SizedBox(height: AppSpacing.s4),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.errorLight,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.error),
+                              ),
+                              child: Text(
+                                'Fejl: $_scanError',
+                                style: AppTypography.sm.copyWith(color: AppColors.error),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

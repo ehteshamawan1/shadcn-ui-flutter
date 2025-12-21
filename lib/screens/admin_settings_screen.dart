@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dropdown_settings_screen.dart';
 import '../services/economic_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
+import 'dropdown_settings_screen.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -36,7 +42,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Fejl ved indlæsning: $e'),
+            content: Text('Fejl ved indlaesning: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -55,7 +61,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       await prefs.setString('economic_app_secret', _appSecretController.text);
       await prefs.setString('economic_agreement_grant', _agreementGrantController.text);
 
-      // Also update the EconomicService singleton so changes take effect immediately
       final economicService = EconomicService();
       economicService.setCredentials(
         appSecretToken: _appSecretController.text,
@@ -90,7 +95,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
     if (appSecret.isEmpty || agreementGrant.isEmpty) {
       setState(() {
-        _testResult = 'Indtast venligst begge tokens først';
+        _testResult = 'Indtast venligst begge tokens foerst';
         _testSuccess = false;
       });
       return;
@@ -103,7 +108,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     });
 
     try {
-      // Create service instance and set credentials
       final service = EconomicService();
       service.setCredentials(
         appSecretToken: appSecret,
@@ -142,193 +146,177 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Indstillinger'),
+        title: const Text('Admin indstillinger'),
         elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: AppSpacing.p6,
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text('e-conomic API konfiguration', style: AppTypography.lgSemibold),
+                    const SizedBox(height: AppSpacing.s2),
                     Text(
-                      'e-conomic API Konfiguration',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      'Gem dine e-conomic API credentials her, saa du ikke skal indtaste dem hver gang.',
+                      style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Gem dine e-conomic API credentials her, så du ikke behøver at indtaste dem hver gang du eksporterer sager.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                    ),
-                    const SizedBox(height: 24),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            TextFormField(
-                              controller: _appSecretController,
-                              decoration: const InputDecoration(
-                                labelText: 'App Secret Token',
-                                helperText: 'Dit e-conomic App Secret Token',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.key),
-                              ),
-                              obscureText: true,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Dette felt er påkrævet';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _agreementGrantController,
-                              decoration: const InputDecoration(
-                                labelText: 'Agreement Grant Token',
-                                helperText: 'Dit e-conomic Agreement Grant Token',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.verified_user),
-                              ),
-                              obscureText: true,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Dette felt er påkrævet';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.blue[200]!),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.info_outline, color: Colors.blue[700]),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'Du kan finde dine API credentials i e-conomic under Indstillinger → API.',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.blue[900],
+                    const SizedBox(height: AppSpacing.s6),
+                    SkaCard(
+                      padding: EdgeInsets.zero,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SkaCardHeader(title: 'Credentials'),
+                          SkaCardContent(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SkaInput(
+                                  label: 'App Secret Token',
+                                  helper: 'Dit e-conomic App Secret Token',
+                                  controller: _appSecretController,
+                                  prefixIcon: const Icon(Icons.key),
+                                  obscureText: true,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Dette felt er paakraevet';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: AppSpacing.s4),
+                                SkaInput(
+                                  label: 'Agreement Grant Token',
+                                  helper: 'Dit e-conomic Agreement Grant Token',
+                                  controller: _agreementGrantController,
+                                  prefixIcon: const Icon(Icons.verified_user),
+                                  obscureText: true,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Dette felt er paakraevet';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: AppSpacing.s4),
+                                Container(
+                                  padding: AppSpacing.p3,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.blue50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.blue200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.info_outline, color: AppColors.blue700),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Find API credentials i e-conomic under Indstillinger > API.',
+                                          style: AppTypography.xs.copyWith(color: AppColors.blue700),
+                                        ),
                                       ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.s4),
+                                SkaButton(
+                                  onPressed: _isTesting ? null : _testConnection,
+                                  variant: ButtonVariant.outline,
+                                  fullWidth: true,
+                                  icon: _isTesting
+                                      ? const SizedBox(
+                                          height: 16,
+                                          width: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.wifi_tethering),
+                                  text: _isTesting ? 'Tester forbindelse...' : 'Test forbindelse',
+                                ),
+                                if (_testResult != null) ...[
+                                  const SizedBox(height: AppSpacing.s3),
+                                  Container(
+                                    padding: AppSpacing.p3,
+                                    decoration: BoxDecoration(
+                                      color: _testSuccess == true
+                                          ? AppColors.successLight
+                                          : AppColors.errorLight,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: _testSuccess == true
+                                            ? AppColors.success
+                                            : AppColors.error,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          _testSuccess == true ? Icons.check_circle : Icons.error,
+                                          color: _testSuccess == true ? AppColors.success : AppColors.error,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            _testResult!,
+                                            style: AppTypography.xs.copyWith(
+                                              color: _testSuccess == true ? AppColors.success : AppColors.error,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 16),
-                            // Test connection button
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _isTesting ? null : _testConnection,
-                                icon: _isTesting
-                                    ? const SizedBox(
-                                        height: 16,
-                                        width: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.wifi_tethering),
-                                label: Text(_isTesting ? 'Tester forbindelse...' : 'Test forbindelse'),
-                              ),
-                            ),
-                            // Test result
-                            if (_testResult != null) ...[
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: _testSuccess == true
-                                      ? Colors.green[50]
-                                      : Colors.red[50],
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: _testSuccess == true
-                                        ? Colors.green[300]!
-                                        : Colors.red[300]!,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _testSuccess == true
-                                          ? Icons.check_circle
-                                          : Icons.error,
-                                      color: _testSuccess == true
-                                          ? Colors.green[700]
-                                          : Colors.red[700],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _testResult!,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: _testSuccess == true
-                                              ? Colors.green[900]
-                                              : Colors.red[900],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveSettings,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Gem Indstillinger'),
-                      ),
+                    const SizedBox(height: AppSpacing.s6),
+                    SkaButton(
+                      onPressed: _isSaving ? null : _saveSettings,
+                      variant: ButtonVariant.primary,
+                      size: ButtonSize.lg,
+                      fullWidth: true,
+                      text: _isSaving ? 'Gemmer...' : 'Gem indstillinger',
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSpacing.s8),
                     const Divider(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Andre Indstillinger',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.list_alt),
-                        title: const Text('Dropdown Indstillinger'),
-                        subtitle: const Text('Administrer valgmuligheder i dropdown menuer'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const DropdownSettingsScreen(),
+                    const SizedBox(height: AppSpacing.s4),
+                    Text('Andre indstillinger', style: AppTypography.lgSemibold),
+                    const SizedBox(height: AppSpacing.s4),
+                    SkaCard(
+                      padding: AppSpacing.p4,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const DropdownSettingsScreen(),
+                          ),
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(Icons.list_alt, color: AppColors.primary),
+                          const SizedBox(width: AppSpacing.s3),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Dropdown indstillinger', style: AppTypography.smSemibold),
+                                Text(
+                                  'Administrer valgmuligheder i dropdown menuer',
+                                  style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+                                ),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                          Icon(Icons.chevron_right, color: AppColors.mutedForeground),
+                        ],
                       ),
                     ),
                   ],
@@ -336,25 +324,5 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
               ),
             ),
     );
-  }
-
-  /// Get saved credentials
-  static Future<Map<String, String>?> getSavedCredentials() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final appSecret = prefs.getString('economic_app_secret');
-      final agreementGrant = prefs.getString('economic_agreement_grant');
-
-      if (appSecret != null && agreementGrant != null &&
-          appSecret.isNotEmpty && agreementGrant.isNotEmpty) {
-        return {
-          'appSecretToken': appSecret,
-          'agreementGrantToken': agreementGrant,
-        };
-      }
-    } catch (e) {
-      debugPrint('Error loading credentials: $e');
-    }
-    return null;
   }
 }

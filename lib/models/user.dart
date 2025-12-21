@@ -27,6 +27,10 @@ class User extends HiveObject {
   @HiveField(6)
   String? fcmToken;
 
+  /// Last active timestamp for activity tracking (Phase 2)
+  @HiveField(7)
+  String? lastActiveAt;
+
   User({
     required this.id,
     required this.name,
@@ -35,6 +39,7 @@ class User extends HiveObject {
     this.enabledFeatures,
     required this.createdAt,
     this.fcmToken,
+    this.lastActiveAt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -45,6 +50,7 @@ class User extends HiveObject {
         'enabledFeatures': enabledFeatures,
         'createdAt': createdAt,
         'fcmToken': fcmToken,
+        'lastActiveAt': lastActiveAt,
       };
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -55,5 +61,6 @@ class User extends HiveObject {
         enabledFeatures: (json['enabledFeatures'] as List<dynamic>?)?.cast<String>(),
         createdAt: json['createdAt'] as String,
         fcmToken: json['fcmToken'] as String?,
+        lastActiveAt: json['lastActiveAt'] as String?,
       );
 }

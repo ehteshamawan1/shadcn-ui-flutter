@@ -4,14 +4,17 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../services/economic_service.dart';
-import '../services/auth_service.dart';
 import '../models/sag.dart';
 import '../models/timer_log.dart';
 import '../models/equipment_log.dart';
 import '../models/blok.dart';
 import '../models/blok_completion.dart';
-import '../providers/theme_provider.dart';
-import '../models/kostpris.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 
 /// Invoice line item for display and calculation
 class FakturaLinje {
@@ -57,7 +60,6 @@ class FakturaScreen extends StatefulWidget {
 class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProviderStateMixin {
   final _dbService = DatabaseService();
   final _economicService = EconomicService();
-  final _authService = AuthService();
   late TabController _tabController;
 
   bool _isLoading = true;
@@ -98,7 +100,7 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
 
   // e-conomic connection status
   bool _economicConnected = false;
-  String? _economicAgreementName;
+  bool _needsEconomicCredentials = false;
 
   @override
   void initState() {
@@ -182,24 +184,31 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
       final savedAgreementGrant = prefs.getString('economic_agreement_grant');
 
       // If we have saved credentials, use them
-      if (savedAppSecret != null && savedAppSecret.isNotEmpty &&
-          savedAgreementGrant != null && savedAgreementGrant.isNotEmpty) {
+      if (savedAppSecret != null &&
+          savedAppSecret.isNotEmpty &&
+          savedAgreementGrant != null &&
+          savedAgreementGrant.isNotEmpty) {
         _economicService.setCredentials(
           appSecretToken: savedAppSecret,
           agreementGrantToken: savedAgreementGrant,
         );
         debugPrint('e-conomic: Using saved credentials from settings');
+        _needsEconomicCredentials = false;
       } else {
-        // Reset to default credentials
-        _economicService.resetToDefaultCredentials();
-        debugPrint('e-conomic: Using default credentials');
+        if (mounted) {
+          setState(() {
+            _economicConnected = false;
+            _needsEconomicCredentials = true;
+          });
+        }
+        return;
       }
 
-      final result = await _economicService.testConnection();
+      await _economicService.testConnection();
       if (mounted) {
         setState(() {
           _economicConnected = true;
-          _economicAgreementName = result['agreement']?['name'] ?? 'Connected';
+          _needsEconomicCredentials = false;
         });
       }
     } catch (e) {
@@ -207,20 +216,31 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
       if (mounted) {
         setState(() {
           _economicConnected = false;
-          _economicAgreementName = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Kunne ikke forbinde til e-conomic: ${e.toString().replaceAll('Exception:', '').trim()}'),
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'Prøv igen',
-              onPressed: _testEconomicConnection,
+              label: 'Indstil',
+              onPressed: _openEconomicSettings,
             ),
           ),
         );
       }
     }
+  }
+
+  void _openEconomicSettings() {
+    Navigator.pushNamed(context, '/admin-settings');
+  }
+
+  Future<void> _handleEconomicStatusTap() async {
+    if (_needsEconomicCredentials) {
+      _openEconomicSettings();
+      return;
+    }
+    await _testEconomicConnection();
   }
 
   // Filter equipment logs for billing period
@@ -267,7 +287,7 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
 
     final setupDate = DateTime.tryParse(log.timestamp) ?? _periodeFra!;
     final data = log.data;
-    final takedownDateStr = data?['takedownDate'] as String?;
+    final takedownDateStr = data['takedownDate'] as String?;
     final takedownDate = takedownDateStr != null ? DateTime.tryParse(takedownDateStr) : _periodeTil;
 
     final startDate = setupDate.isAfter(_periodeFra!) ? setupDate : _periodeFra!;
@@ -283,7 +303,7 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
 
     // Equipment lines
     for (var log in _filteredEquipmentLogs) {
-      final data = log.data ?? {};
+      final data = log.data;
       final daysInPeriod = _calculateDaysInPeriod(log);
       final prisPrDag = (data['prisPrDag'] as num?)?.toDouble() ?? 0;
       final quantity = (data['quantity'] as num?)?.toInt() ?? 1;
@@ -536,9 +556,10 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
           ),
         ),
         actions: [
-          TextButton(
+          SkaButton(
+            text: 'Luk',
+            variant: ButtonVariant.secondary,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Luk'),
           ),
         ],
       ),
@@ -547,8 +568,6 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -562,9 +581,10 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
             const SizedBox(height: 16),
             Text('Fejl: $_error'),
             const SizedBox(height: 16),
-            ElevatedButton(
+            SkaButton(
               onPressed: _loadData,
-              child: const Text('Prøv igen'),
+              variant: ButtonVariant.primary,
+              text: 'Proev igen',
             ),
           ],
         ),
@@ -584,7 +604,7 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
               color: Theme.of(context).cardColor,
               border: Border(
                 bottom: BorderSide(
-                  color: isDark ? AppColors.slate700 : Colors.grey[200]!,
+                  color: AppColors.border,
                 ),
               ),
             ),
@@ -604,27 +624,29 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                         children: [
                           Text(
                             'Faktura Generator',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            style: AppTypography.xlBold.copyWith(
+                              color: AppColors.foreground,
+                            ),
                           ),
                           Text(
                             'Sag: ${_sag?.sagsnr ?? widget.sagId}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
+                            style: AppTypography.sm.copyWith(
+                              color: AppColors.mutedForeground,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     // e-conomic status (tappable to retry connection)
                     InkWell(
-                      onTap: !_economicConnected ? _testEconomicConnection : null,
+                      onTap: !_economicConnected ? _handleEconomicStatusTap : null,
                       borderRadius: BorderRadius.circular(20),
                       child: Tooltip(
                         message: _economicConnected
                             ? 'Forbundet til e-conomic'
-                            : 'Tryk for at prøve igen',
+                            : (_needsEconomicCredentials
+                                ? 'Indstil e-conomic credentials'
+                                : 'Tryk for at proeve igen'),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -646,7 +668,11 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                _economicConnected ? 'e-conomic' : 'Offline - tryk for at prøve igen',
+                                _economicConnected
+                                    ? 'e-conomic'
+                                    : (_needsEconomicCredentials
+                                        ? 'Offline - indstil credentials'
+                                        : 'Offline - tryk for at proeve igen'),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
@@ -750,37 +776,29 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
               color: Theme.of(context).cardColor,
               border: Border(
                 top: BorderSide(
-                  color: isDark ? AppColors.slate700 : Colors.grey[200]!,
+                  color: AppColors.border,
                 ),
               ),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: SkaButton(
                     onPressed: _exportJson,
-                    icon: const Icon(Icons.download),
-                    label: const Text('Eksporter JSON'),
+                    icon: const Icon(Icons.download, size: 16),
+                    text: 'Eksporter JSON',
+                    variant: ButtonVariant.outline,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton.icon(
+                  child: SkaButton(
                     onPressed: _economicConnected && !_isSending ? _sendToEconomic : null,
-                    icon: _isSending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                    label: Text(_isSending ? 'Sender...' : 'Send til e-conomic'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
+                    icon: const Icon(Icons.send, size: 16),
+                    text: _isSending ? 'Sender...' : 'Send til e-conomic',
+                    size: ButtonSize.xl,
+                    loading: _isSending,
                   ),
                 ),
               ],
@@ -805,18 +823,11 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
             const SizedBox(height: 4),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+              style: AppTypography.lgBold.copyWith(color: color),
             ),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 10,
-                color: color,
-              ),
+              style: AppTypography.xs.copyWith(color: color),
             ),
           ],
         ),
@@ -831,7 +842,8 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Period selection
-          Card(
+          SkaCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -843,9 +855,9 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                       const SizedBox(width: 8),
                       Text(
                         'Faktureringsperiode',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: AppTypography.lgSemibold.copyWith(
+                          color: AppColors.foreground,
+                        ),
                       ),
                     ],
                   ),
@@ -947,7 +959,8 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
           const SizedBox(height: 16),
 
           // Invoice lines
-          Card(
+          SkaCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -959,9 +972,9 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                       const SizedBox(width: 8),
                       Text(
                         'Faktura Linjer (${linjer.length})',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: AppTypography.lgSemibold.copyWith(
+                          color: AppColors.foreground,
+                        ),
                       ),
                     ],
                   ),
@@ -991,12 +1004,10 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
           const SizedBox(height: 16),
 
           // Totals
-          Card(
-            color: Colors.blue.withOpacity(0.05),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
+          SkaCard(
+            padding: AppSpacing.p4,
+            child: Column(
+              children: [
                   _buildTotalRow('Udstyr subtotal', totals['equipmentSubtotal'] ?? 0),
                   _buildTotalRow('Timer subtotal', totals['timerSubtotal'] ?? 0),
                   _buildTotalRow('Blok subtotal', totals['blokSubtotal'] ?? 0),
@@ -1016,8 +1027,7 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                     isBold: true,
                     fontSize: 18,
                   ),
-                ],
-              ),
+              ],
             ),
           ),
         ],
@@ -1133,7 +1143,8 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Invoice settings
-          Card(
+          SkaCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1141,33 +1152,27 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                 children: [
                   Text(
                     'Faktura Indstillinger',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: AppTypography.lgSemibold.copyWith(
+                      color: AppColors.foreground,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
+                        child: SkaInput(
+                          label: 'Prefix',
                           initialValue: _fakturaNummerPrefix,
-                          decoration: const InputDecoration(
-                            labelText: 'Prefix',
-                            border: OutlineInputBorder(),
-                          ),
                           onChanged: (v) => setState(() => _fakturaNummerPrefix = v),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 2,
-                        child: TextFormField(
+                        child: SkaInput(
                           initialValue: _fakturaNummerCounter.toString(),
-                          decoration: const InputDecoration(
-                            labelText: 'Nummer',
-                            border: OutlineInputBorder(),
-                            helperText: 'Næste faktura nummer',
-                          ),
+                          label: 'Nummer',
+                          helper: 'Næste faktura nummer',
                           keyboardType: TextInputType.number,
                           onChanged: (v) => setState(() => _fakturaNummerCounter = int.tryParse(v) ?? 1001),
                         ),
@@ -1177,7 +1182,7 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                   const SizedBox(height: 8),
                   Text(
                     'Faktura nummer: ${_generateFakturaNumber()}',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -1230,12 +1235,9 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  SkaInput(
+                    label: 'Betalingsbetingelser',
                     initialValue: _betalingsBetingelser,
-                    decoration: const InputDecoration(
-                      labelText: 'Betalingsbetingelser',
-                      border: OutlineInputBorder(),
-                    ),
                     onChanged: (v) => setState(() => _betalingsBetingelser = v),
                   ),
                 ],
@@ -1245,7 +1247,8 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
           const SizedBox(height: 16),
 
           // Prices
-          Card(
+          SkaCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1253,34 +1256,26 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                 children: [
                   Text(
                     'Priser og Rabat',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: AppTypography.lgSemibold.copyWith(
+                      color: AppColors.foreground,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
+                        child: SkaInput(
+                          label: 'Moms (%)',
                           initialValue: _momsRate.toString(),
-                          decoration: const InputDecoration(
-                            labelText: 'Moms (%)',
-                            border: OutlineInputBorder(),
-                            suffixText: '%',
-                          ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (v) => setState(() => _momsRate = double.tryParse(v) ?? 25.0),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
+                        child: SkaInput(
+                          label: 'Rabat (%)',
                           initialValue: _rabat.toString(),
-                          decoration: const InputDecoration(
-                            labelText: 'Rabat (%)',
-                            border: OutlineInputBorder(),
-                            suffixText: '%',
-                          ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (v) => setState(() => _rabat = double.tryParse(v) ?? 0.0),
                         ),
@@ -1294,7 +1289,8 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
           const SizedBox(height: 16),
 
           // Note
-          Card(
+          SkaCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1302,17 +1298,14 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                 children: [
                   Text(
                     'Faktura Note',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: AppTypography.lgSemibold.copyWith(
+                      color: AppColors.foreground,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  SkaInput(
+                    placeholder: 'Ekstra noter til fakturaen...',
                     initialValue: _note,
-                    decoration: const InputDecoration(
-                      hintText: 'Ekstra noter til fakturaen...',
-                      border: OutlineInputBorder(),
-                    ),
                     maxLines: 4,
                     onChanged: (v) => setState(() => _note = v),
                   ),
@@ -1328,8 +1321,9 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
   Widget _buildForhaandsvisningTab(List<FakturaLinje> linjer, Map<String, double> totals) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Card(
-        child: Padding(
+      child: SkaCard(
+            padding: EdgeInsets.zero,
+            child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

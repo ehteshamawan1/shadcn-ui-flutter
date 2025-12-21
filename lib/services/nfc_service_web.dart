@@ -29,6 +29,11 @@ class NFCService {
     // No-op on web
   }
 
+  // Reset write state (no-op on web)
+  void resetWriteState() {
+    // No-op on web
+  }
+
   // Write equipment data to NFC tag
   Future<bool> writeEquipmentToTag(NFCEquipmentData equipmentData) async {
     throw Exception('NFC skrivning er ikke tilgængelig på web platform');

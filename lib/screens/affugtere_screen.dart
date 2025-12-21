@@ -4,7 +4,13 @@ import '../services/settings_service.dart';
 import '../models/affugter.dart';
 import '../models/app_setting.dart';
 import '../providers/theme_provider.dart';
+import '../theme/app_colors.dart' as theme_colors;
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_badge.dart';
+import '../widgets/ui/ska_card.dart';
 import '../widgets/filter_widget.dart';
+import '../widgets/theme_toggle.dart';
 import 'package:uuid/uuid.dart';
 
 class AffugtereScreen extends StatefulWidget {
@@ -685,8 +691,12 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Udstyr Oversigt'),
+        title: const Text('Affugtere'),
         elevation: 0,
+        actions: const [
+          ThemeToggle(),
+          SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [
@@ -850,215 +860,100 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
     );
   }
 
-  Widget _buildStatCard(
-    String label,
-    int count,
-    Color color,
-    IconData icon,
-    bool isSelected,
-    VoidCallback onTap,
-    double maxWidth,
-  ) {
-    // Calculate card width based on available space
-    final cardWidth = (maxWidth - 36) / 4; // 4 cards with 12px spacing
-    final minWidth = 120.0;
-    final actualWidth = cardWidth.clamp(minWidth, 200.0);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: actualWidth,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? color : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildAffugterCard(Affugter affugter) {
     final statusColor = _getStatusColor(affugter.status);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showEditDialog(affugter),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Status indicator
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getStatusIcon(affugter.status),
-                  color: statusColor,
-                ),
-              ),
-              const SizedBox(width: 16),
-
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return SkaCard(
+      padding: AppSpacing.p4,
+      onTap: () => _showEditDialog(affugter),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _getStatusIcon(affugter.status),
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: AppSpacing.s2,
+                  runSpacing: AppSpacing.s1,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            affugter.nr,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            affugter.status.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // NFC badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _hasNfcTag(affugter)
-                                ? AppColors.success.withValues(alpha: 0.1)
-                                : Colors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.nfc,
-                                size: 12,
-                                color: _hasNfcTag(affugter) ? AppColors.success : Colors.orange,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _hasNfcTag(affugter) ? 'NFC' : 'Mangler',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: _hasNfcTag(affugter) ? AppColors.success : Colors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    SkaBadge(
+                      text: affugter.nr,
+                      variant: BadgeVariant.secondary,
+                      small: true,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${affugter.maerke}${affugter.model != null ? ' ${affugter.model}' : ''}',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    SkaBadge.status(
+                      text: affugter.status,
+                      status: affugter.status,
+                      small: true,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Type: ${affugter.type}${affugter.serie != null ? ' • Serie: ${affugter.serie}' : ''}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    SkaBadge(
+                      text: _hasNfcTag(affugter) ? 'NFC' : 'Mangler NFC',
+                      variant: _hasNfcTag(affugter) ? BadgeVariant.success : BadgeVariant.warning,
+                      icon: const Icon(Icons.nfc),
+                      small: true,
                     ),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.s2),
+                Text(
+                  '${affugter.maerke}${affugter.model != null ? ' ${affugter.model}' : ''}',
+                  style: AppTypography.smSemibold,
+                ),
+                const SizedBox(height: AppSpacing.s1),
+                Text(
+                  'Type: ${affugter.type}${affugter.serie != null ? ' • Serie: ${affugter.serie}' : ''}',
+                  style: AppTypography.xs.copyWith(
+                    color: theme_colors.AppColors.mutedForeground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton(
+            icon: const Icon(Icons.more_vert),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                child: const Row(
+                  children: [
+                    Icon(Icons.edit),
+                    SizedBox(width: 8),
+                    Text('Rediger'),
+                  ],
+                ),
+                onTap: () => Future.delayed(
+                  const Duration(milliseconds: 300),
+                  () => _showEditDialog(affugter),
+                ),
               ),
-
-              // Actions
-              PopupMenuButton(
-                icon: const Icon(Icons.more_vert),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    child: const Row(
-                      children: [
-                        Icon(Icons.edit),
-                        SizedBox(width: 8),
-                        Text('Rediger'),
-                      ],
-                    ),
-                    onTap: () => Future.delayed(
-                      const Duration(milliseconds: 300),
-                      () => _showEditDialog(affugter),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, color: Colors.red[700]),
-                        const SizedBox(width: 8),
-                        Text('Slet', style: TextStyle(color: Colors.red[700])),
-                      ],
-                    ),
-                    onTap: () => Future.delayed(
-                      const Duration(milliseconds: 300),
-                      () => _deleteAffugter(affugter),
-                    ),
-                  ),
-                ],
+              PopupMenuItem(
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, color: Colors.red[700]),
+                    const SizedBox(width: 8),
+                    Text('Slet', style: TextStyle(color: Colors.red[700])),
+                  ],
+                ),
+                onTap: () => Future.delayed(
+                  const Duration(milliseconds: 300),
+                  () => _deleteAffugter(affugter),
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

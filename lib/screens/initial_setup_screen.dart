@@ -3,6 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/user.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
+import '../widgets/ui/ska_input.dart';
 
 class InitialSetupScreen extends StatefulWidget {
   const InitialSetupScreen({super.key});
@@ -57,7 +63,7 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pushReplacementNamed('/dashboard');
+        Navigator.of(context).pushReplacementNamed('/sager');
       }
     } catch (e) {
       if (mounted) {
@@ -78,7 +84,7 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: AppSpacing.p6,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500),
               child: Form(
@@ -94,16 +100,14 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
                     const SizedBox(height: 16),
                     Text(
                       'Velkommen til SKA-DAN',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: AppTypography.xl2Bold,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Sagshåndtering',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey[600],
+                      'Sagshaandtering',
+                      style: AppTypography.sm.copyWith(
+                        color: AppColors.mutedForeground,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -140,17 +144,12 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    TextFormField(
+                    SkaInput(
+                      label: 'Administrator navn',
+                      placeholder: 'Indtast dit navn',
                       controller: _nameController,
                       enabled: !_isLoading,
-                      decoration: InputDecoration(
-                        labelText: 'Administrator navn',
-                        hintText: 'Indtast dit navn',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.person),
-                      ),
+                      prefixIcon: const Icon(Icons.person),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Indtast et navn';
@@ -159,26 +158,20 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    SkaInput(
+                      label: 'PIN kode (4 cifre)',
+                      placeholder: '****',
                       controller: _pinController,
                       enabled: !_isLoading,
                       keyboardType: TextInputType.number,
-                      maxLength: 4,
                       obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'PIN kode (4 cifre)',
-                        hintText: '••••',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.lock),
-                      ),
+                      prefixIcon: const Icon(Icons.lock),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Indtast en PIN';
                         }
                         if (value.length != 4) {
-                          return 'PIN skal være 4 cifre';
+                          return 'PIN skal vaere 4 cifre';
                         }
                         if (int.tryParse(value) == null) {
                           return 'PIN skal kun indeholde tal';
@@ -187,23 +180,17 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    SkaInput(
+                      label: 'Bekraeft PIN',
+                      placeholder: '****',
                       controller: _confirmPinController,
                       enabled: !_isLoading,
                       keyboardType: TextInputType.number,
-                      maxLength: 4,
                       obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Bekræft PIN',
-                        hintText: '••••',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.lock_outline),
-                      ),
+                      prefixIcon: const Icon(Icons.lock_outline),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Bekræft din PIN';
+                          return 'Bekraeft din PIN';
                         }
                         if (value != _pinController.text) {
                           return 'PIN koderne matcher ikke';
@@ -214,8 +201,9 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
                     const SizedBox(height: 24),
                     SizedBox(
                       height: 48,
-                      child: ElevatedButton.icon(
+                      child: SkaButton(
                         onPressed: _isLoading ? null : _handleSetup,
+                        variant: ButtonVariant.primary,
                         icon: _isLoading
                             ? const SizedBox(
                                 height: 20,
@@ -226,30 +214,20 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
                                 ),
                               )
                             : const Icon(Icons.check_circle),
-                        label: Text(_isLoading ? 'Opretter...' : 'Opret administrator'),
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        text: _isLoading ? 'Opretter...' : 'Opret administrator',
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.amber[200]!),
-                      ),
+                    SkaCard(
+                      padding: AppSpacing.p3,
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.amber[700]),
+                          const Icon(Icons.info_outline, color: AppColors.warning),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Denne bruger vil være administrator og kan oprette flere brugere senere',
-                              style: Theme.of(context).textTheme.bodySmall,
+                              'Denne bruger vil vaere administrator og kan oprette flere brugere senere',
+                              style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                             ),
                           ),
                         ],

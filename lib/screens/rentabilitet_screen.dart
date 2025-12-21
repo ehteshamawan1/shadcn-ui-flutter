@@ -3,7 +3,10 @@ import '../services/database_service.dart';
 import '../models/timer_log.dart';
 import '../models/equipment_log.dart';
 import '../models/blok.dart';
-import '../providers/theme_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_card.dart';
 import '../models/kostpris.dart';
 
 /// Profitability analysis screen for a Sag
@@ -90,11 +93,9 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
     // Note: Equipment logging is more complex - for now, use a simplified calculation
     // based on equipment logs that have pricing information in their data field
     for (final log in _equipmentLogs) {
-      if (log.data != null) {
-        final dailyRate = (log.data!['dailyRate'] ?? log.data!['customPrice'] ?? 0) as num;
-        final daysRented = (log.data!['daysRented'] ?? 1) as num;
-        registeredEquipmentRevenue += dailyRate * daysRented;
-      }
+      final dailyRate = (log.data['dailyRate'] ?? log.data['customPrice'] ?? 0) as num;
+      final daysRented = (log.data['daysRented'] ?? 1) as num;
+      registeredEquipmentRevenue += dailyRate * daysRented;
     }
 
     // Blok revenue based on pricing model
@@ -222,16 +223,16 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.analytics_outlined, size: 64, color: theme.colorScheme.outline),
+          Icon(Icons.analytics_outlined, size: 64, color: AppColors.mutedForeground),
           const SizedBox(height: 16),
           Text(
             'Ingen data tilgængelig',
-            style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.outline),
+            style: AppTypography.smSemibold.copyWith(color: AppColors.mutedForeground),
           ),
           const SizedBox(height: 8),
           Text(
             'Registrer timer, udstyr eller blokke for at se rentabilitet.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
             textAlign: TextAlign.center,
           ),
         ],
@@ -248,22 +249,17 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Info banner
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade200),
-            ),
+          SkaCard(
+            padding: AppSpacing.p3,
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.blue.shade700),
+                const Icon(Icons.info_outline, color: AppColors.blue700),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Rentabiliteten beregnes på timer, udstyr og færdigmeldte boliger fra blokke. '
                     'Omkostninger inkluderer løn (400 DKK/time), udstyrsdrift (30%) og overhead (15%).',
-                    style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                    style: AppTypography.xs.copyWith(color: AppColors.blue700),
                   ),
                 ),
               ],
@@ -364,47 +360,43 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
     Color color,
     String subtitle,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-                  Text(value, style: theme.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline, fontSize: 10)),
-                ],
-              ),
+    return SkaCard(
+      padding: AppSpacing.p4,
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTypography.xs.copyWith(color: AppColors.mutedForeground)),
+                Text(value, style: AppTypography.lgSemibold.copyWith(color: color)),
+                Text(subtitle, style: AppTypography.xs.copyWith(color: AppColors.mutedForeground)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSectionCard(ThemeData theme, String title, IconData icon, Color color, List<Widget> children) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 20),
-                const SizedBox(width: 8),
-                Text(title, style: theme.textTheme.titleMedium?.copyWith(color: color)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...children,
-          ],
-        ),
+    return SkaCard(
+      padding: AppSpacing.p4,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: AppTypography.smSemibold.copyWith(color: color)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
       ),
     );
   }
@@ -415,8 +407,8 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(label, style: AppTypography.sm.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: AppTypography.sm.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );
@@ -445,44 +437,42 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
       statusColor = Colors.red;
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.analytics, color: theme.colorScheme.outline),
-                  const SizedBox(width: 8),
-                  Text('Rentabilitetsstatus', style: theme.textTheme.titleMedium),
-                ],
+    return SkaCard(
+      padding: AppSpacing.p5,
+      child: Center(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(Icons.analytics, color: AppColors.mutedForeground),
+                const SizedBox(width: 8),
+                Text('Rentabilitetsstatus', style: AppTypography.smSemibold),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$statusEmoji $statusText',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
+              child: Text(
+                '$statusEmoji $statusText',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: statusColor,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                r.registeredProfitMargin >= 0
-                    ? 'Sagen har ${_formatPercentage(r.registeredProfitMargin)} margin.'
-                    : 'Sagen taber ${_formatPercentage(r.registeredProfitMargin.abs())}.',
-                style: TextStyle(color: statusColor),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              r.registeredProfitMargin >= 0
+                  ? 'Sagen har ${_formatPercentage(r.registeredProfitMargin)} margin.'
+                  : 'Sagen taber ${_formatPercentage(r.registeredProfitMargin.abs())}.',
+              style: AppTypography.sm.copyWith(color: statusColor),
+            ),
+          ],
         ),
       ),
     );
@@ -510,28 +500,27 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
 
           // Timer list
           if (_timerLogs.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(Icons.timer_outlined, size: 48, color: theme.colorScheme.outline),
-                      const SizedBox(height: 8),
-                      Text('Ingen timer registreret', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
-                    ],
-                  ),
+            SkaCard(
+              padding: AppSpacing.p5,
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.timer_outlined, size: 48, color: AppColors.mutedForeground),
+                    const SizedBox(height: 8),
+                    Text('Ingen timer registreret', style: AppTypography.sm.copyWith(color: AppColors.mutedForeground)),
+                  ],
                 ),
               ),
             )
           else
-            Card(
+            SkaCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text('Timer Detaljer', style: theme.textTheme.titleMedium),
+                    child: Text('Timer detaljer', style: AppTypography.smSemibold),
                   ),
                   ListView.builder(
                     shrinkWrap: true,
@@ -584,7 +573,8 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
           const SizedBox(height: 16),
 
           if (_equipmentLogs.isEmpty)
-            Card(
+            SkaCard(
+              padding: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Center(
@@ -592,20 +582,21 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
                     children: [
                       Icon(Icons.inventory_2_outlined, size: 48, color: theme.colorScheme.outline),
                       const SizedBox(height: 8),
-                      Text('Intet udstyr registreret', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
+                      Text('Intet udstyr registreret', style: AppTypography.sm.copyWith(color: AppColors.mutedForeground)),
                     ],
                   ),
                 ),
               ),
             )
           else
-            Card(
+            SkaCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text('Udstyr på sagen', style: theme.textTheme.titleMedium),
+                    child: Text('Udstyr paa sagen', style: AppTypography.smSemibold),
                   ),
                   ListView.builder(
                     shrinkWrap: true,
@@ -647,7 +638,8 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
           const SizedBox(height: 16),
 
           if (_blokke.isEmpty)
-            Card(
+            SkaCard(
+              padding: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Center(
@@ -655,20 +647,21 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
                     children: [
                       Icon(Icons.view_quilt_outlined, size: 48, color: theme.colorScheme.outline),
                       const SizedBox(height: 8),
-                      Text('Ingen blokke registreret', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
+                      Text('Ingen blokke registreret', style: AppTypography.sm.copyWith(color: AppColors.mutedForeground)),
                     ],
                   ),
                 ),
               ),
             )
           else
-            Card(
+            SkaCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text('Blokke på sagen', style: theme.textTheme.titleMedium),
+                    child: Text('Blokke paa sagen', style: AppTypography.smSemibold),
                   ),
                   ListView.builder(
                     shrinkWrap: true,
@@ -706,16 +699,14 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
   }
 
   Widget _buildStatCard(ThemeData theme, String label, String value, Color color) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-            const SizedBox(height: 4),
-            Text(value, style: theme.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.bold)),
-          ],
-        ),
+    return SkaCard(
+      padding: AppSpacing.p3,
+      child: Column(
+        children: [
+          Text(label, style: AppTypography.xs.copyWith(color: AppColors.mutedForeground)),
+          const SizedBox(height: 4),
+          Text(value, style: AppTypography.smSemibold.copyWith(color: color)),
+        ],
       ),
     );
   }

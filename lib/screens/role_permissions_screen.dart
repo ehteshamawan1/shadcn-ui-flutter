@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../services/database_service.dart';
 import '../constants/roles_and_features.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/ui/ska_button.dart';
+import '../widgets/ui/ska_card.dart';
 
 class RolePermissionsScreen extends StatefulWidget {
   const RolePermissionsScreen({super.key});
@@ -66,7 +71,7 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: AppColors.blue50,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -74,12 +79,12 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
                     children: [
                       Text(
                         'Rolle: ${AppRoles.labels[user.role]}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: AppTypography.smSemibold,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Vælg hvilke funktioner denne bruger skal have adgang til:',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                        'Vaelg hvilke funktioner denne bruger skal have adgang til:',
+                        style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                       ),
                     ],
                   ),
@@ -109,16 +114,18 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
           ),
         ),
         actions: [
-          TextButton(
+          SkaButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Afbryd'),
+            variant: ButtonVariant.ghost,
+            text: 'Afbryd',
           ),
-          ElevatedButton(
+          SkaButton(
             onPressed: () {
               _updateUserFeatures(user, enabledFeatures);
               Navigator.pop(context);
             },
-            child: const Text('Gem'),
+            variant: ButtonVariant.primary,
+            text: 'Gem',
           ),
         ],
       ),
@@ -140,7 +147,7 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
         children: [
           // Role filter tabs
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: AppSpacing.p6,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -194,8 +201,8 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
                     final enabledCount = user.enabledFeatures?.length ?? 0;
                     final totalFeatures = AppFeatures.all.length;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    return SkaCard(
+                      padding: EdgeInsets.zero,
                       child: ListTile(
                         leading: Container(
                           width: 50,
@@ -247,8 +254,9 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
           ),
           // Role defaults section
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
+            padding: AppSpacing.p6,
+            child: SkaCard(
+              padding: EdgeInsets.zero,
               child: ExpansionTile(
                 title: const Text('Standardtilladelser pr. rolle'),
                 children: [
@@ -296,12 +304,12 @@ class _RolePermissionsScreenState extends State<RolePermissionsScreen> {
   Color _getRoleColor(String role) {
     switch (role) {
       case 'admin':
-        return Colors.red.shade400;
+        return AppColors.error;
       case 'bogholder':
-        return Colors.green.shade400;
+        return AppColors.success;
       case 'tekniker':
       default:
-        return Colors.blue.shade400;
+        return AppColors.primary;
     }
   }
 }

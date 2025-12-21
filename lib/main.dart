@@ -13,14 +13,16 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/sager_screen.dart';
 import 'screens/sag_detaljer_screen.dart';
-import 'screens/ny_sag_screen.dart';
+import 'package:ska_dan_flutter/screens/ny_sag_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/nfc_scanner_screen.dart';
 import 'screens/timer_registrering_screen.dart';
 import 'screens/affugtere_screen.dart';
+import 'screens/udstyr_oversigt_screen.dart';
 import 'screens/admin_settings_screen.dart';
 import 'screens/role_permissions_screen.dart';
 import 'screens/initial_setup_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/sync_service.dart';
 import 'config/supabase_config.dart';
 
@@ -265,8 +267,18 @@ class SkaDanApp extends StatelessWidget {
             themeMode: themeProvider.themeMode,
             theme: ThemeProvider.lightTheme,
             darkTheme: ThemeProvider.darkTheme,
+            themeAnimationDuration: Duration.zero,
             initialRoute: '/',
             onGenerateRoute: _generateRoute,
+            builder: (context, child) {
+              if (child == null) {
+                return const SizedBox.shrink();
+              }
+              return KeyedSubtree(
+                key: ValueKey(themeProvider.themeMode),
+                child: child,
+              );
+            },
           );
         },
       ),
@@ -280,134 +292,131 @@ class SkaDanApp extends StatelessWidget {
     final isLoggedIn = authService.isLoggedIn;
     final hasUsers = dbService.getAllUsers().isNotEmpty;
 
+    Route<dynamic> redirectTo(String target) {
+      return MaterialPageRoute(
+        builder: (_) => RedirectScreen(targetRoute: target),
+      );
+    }
+
+    Route<dynamic> protectedRoute(Widget screen) {
+      return isLoggedIn
+          ? MaterialPageRoute(builder: (_) => screen)
+          : redirectTo('/login');
+    }
+
+    if (!hasUsers && settings.name != '/setup') {
+      return redirectTo('/setup');
+    }
+
     switch (settings.name) {
       case '/':
-        if (!hasUsers) {
-          return MaterialPageRoute(builder: (_) => const InitialSetupScreen());
-        }
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn ? const DashboardScreen() : const LoginScreen(),
-        );
+        return isLoggedIn ? redirectTo('/sager') : redirectTo('/login');
 
       case '/login':
-        if (!hasUsers) {
-          return MaterialPageRoute(builder: (_) => const InitialSetupScreen());
-        }
-        return MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        );
+        return isLoggedIn
+            ? redirectTo('/sager')
+            : MaterialPageRoute(builder: (_) => const LoginScreen());
 
       case '/dashboard':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn ? const DashboardScreen() : const LoginScreen(),
-        );
+        return protectedRoute(const DashboardScreen());
 
       case '/sager':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const SagerScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const SagerScreen());
 
       case '/affugtere':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const AffugtereScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const AffugtereScreen());
 
       case '/udstyr-oversigt':
-        // Redirect to affugtere screen (now called Udstyr Oversigt)
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const AffugtereScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const UdstyrsOversigtScreen());
 
       case '/nfc-scanner':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const NFCScannerScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const NFCScannerScreen());
 
       case '/timer':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const TimerRegistreringScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const TimerRegistreringScreen());
 
       case '/sager/ny':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const NySagScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const NySagScreen());
+
+      case '/ny-sag':
+        return protectedRoute(const NySagScreen());
 
       case '/users':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn
-              ? const UserManagementScreen()
-              : const LoginScreen(),
-        );
+        return protectedRoute(const UserManagementScreen());
+
+      case '/settings':
+        return protectedRoute(const SettingsScreen());
 
       case '/admin-settings':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn && authService.currentUser?.role == 'admin'
-              ? const AdminSettingsScreen()
-              : const LoginScreen(),
-        );
+        return isLoggedIn && authService.currentUser?.role == 'admin'
+            ? MaterialPageRoute(builder: (_) => const AdminSettingsScreen())
+            : redirectTo('/login');
 
       case '/role-permissions':
-        return MaterialPageRoute(
-          builder: (_) => isLoggedIn && authService.currentUser?.role == 'admin'
-              ? const RolePermissionsScreen()
-              : const LoginScreen(),
-        );
+        return isLoggedIn && authService.currentUser?.role == 'admin'
+            ? MaterialPageRoute(builder: (_) => const RolePermissionsScreen())
+            : redirectTo('/login');
 
       case '/setup':
-        return MaterialPageRoute(
-          builder: (_) => const InitialSetupScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const InitialSetupScreen());
 
       default:
         // Handle dynamic routes like /sager/:id
         if (settings.name != null && settings.name!.startsWith('/sager/')) {
           final sagId = settings.name!.split('/').last;
-          return MaterialPageRoute(
-            builder: (_) => isLoggedIn
-                ? SagDetaljerScreen(sagId: sagId)
-                : const LoginScreen(),
-          );
+          return protectedRoute(SagDetaljerScreen(sagId: sagId));
+        }
+
+        if (settings.name != null && settings.name!.startsWith('/sag/')) {
+          final sagId = settings.name!.split('/').last;
+          return protectedRoute(SagDetaljerScreen(sagId: sagId));
         }
 
         if (settings.name != null && settings.name!.startsWith('/timer/')) {
           final sagId = settings.name!.split('/').last;
-          return MaterialPageRoute(
-            builder: (_) => isLoggedIn
-                ? TimerRegistreringScreen(sagId: sagId)
-                : const LoginScreen(),
-          );
+          return protectedRoute(TimerRegistreringScreen(sagId: sagId));
         }
 
         if (settings.name != null && settings.name!.startsWith('/nfc-scanner/')) {
           final sagId = settings.name!.split('/').last;
-          return MaterialPageRoute(
-            builder: (_) => isLoggedIn
-                ? NFCScannerScreen(sagId: sagId)
-                : const LoginScreen(),
-          );
+          return protectedRoute(NFCScannerScreen(sagId: sagId));
         }
 
-        return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('404 - Side ikke fundet'),
-            ),
-          ),
-        );
+        if (!isLoggedIn) {
+          return redirectTo('/login');
+        }
+        return redirectTo('/sager');
     }
+  }
+}
+
+class RedirectScreen extends StatefulWidget {
+  final String targetRoute;
+
+  const RedirectScreen({super.key, required this.targetRoute});
+
+  @override
+  State<RedirectScreen> createState() => _RedirectScreenState();
+}
+
+class _RedirectScreenState extends State<RedirectScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed(widget.targetRoute);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 }
 
@@ -430,13 +439,13 @@ class _LoadingScreenState extends State<LoadingScreen> {
     final authService = AuthService();
     await authService.restoreSession();
 
-    if (mounted) {
-      if (authService.isLoggedIn) {
-        Navigator.of(context).pushReplacementNamed('/dashboard');
-      } else {
-        Navigator.of(context).pushReplacementNamed('/login');
+      if (mounted) {
+        if (authService.isLoggedIn) {
+          Navigator.of(context).pushReplacementNamed('/sager');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
       }
-    }
   }
 
   @override
