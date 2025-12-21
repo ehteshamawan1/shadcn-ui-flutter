@@ -548,34 +548,67 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                             },
                           ),
                           const SizedBox(height: AppSpacing.s4),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SkaButton(
-                                  onPressed: () {
-                                    if (_manualIdController.text.isNotEmpty) {
-                                      _searchEquipment(_manualIdController.text);
-                                    }
-                                  },
-                                  variant: ButtonVariant.primary,
-                                  size: ButtonSize.lg,
-                                  icon: const Icon(Icons.search),
-                                  text: 'Soeg udstyr',
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.s3),
-                              Expanded(
-                                child: SkaButton(
-                                  onPressed: () {
-                                    _showCreateNewTagDialog(_manualIdController.text);
-                                  },
-                                  variant: ButtonVariant.outline,
-                                  size: ButtonSize.lg,
-                                  icon: const Icon(Icons.edit_outlined),
-                                  text: 'Programmer tag',
-                                ),
-                              ),
-                            ],
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isNarrow = constraints.maxWidth < 400;
+                              if (isNarrow) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    SkaButton(
+                                      onPressed: () {
+                                        if (_manualIdController.text.isNotEmpty) {
+                                          _searchEquipment(_manualIdController.text);
+                                        }
+                                      },
+                                      variant: ButtonVariant.primary,
+                                      size: ButtonSize.lg,
+                                      icon: const Icon(Icons.search),
+                                      text: 'Soeg udstyr',
+                                    ),
+                                    const SizedBox(height: AppSpacing.s2),
+                                    SkaButton(
+                                      onPressed: () {
+                                        _showCreateNewTagDialog(_manualIdController.text);
+                                      },
+                                      variant: ButtonVariant.outline,
+                                      size: ButtonSize.lg,
+                                      icon: const Icon(Icons.edit_outlined),
+                                      text: 'Programmer tag',
+                                    ),
+                                  ],
+                                );
+                              }
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: SkaButton(
+                                      onPressed: () {
+                                        if (_manualIdController.text.isNotEmpty) {
+                                          _searchEquipment(_manualIdController.text);
+                                        }
+                                      },
+                                      variant: ButtonVariant.primary,
+                                      size: ButtonSize.lg,
+                                      icon: const Icon(Icons.search),
+                                      text: 'Soeg udstyr',
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.s3),
+                                  Expanded(
+                                    child: SkaButton(
+                                      onPressed: () {
+                                        _showCreateNewTagDialog(_manualIdController.text);
+                                      },
+                                      variant: ButtonVariant.outline,
+                                      size: ButtonSize.lg,
+                                      icon: const Icon(Icons.edit_outlined),
+                                      text: 'Programmer tag',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),

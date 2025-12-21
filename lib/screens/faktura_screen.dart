@@ -780,28 +780,56 @@ class _FakturaScreenState extends State<FakturaScreen> with SingleTickerProvider
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SkaButton(
-                    onPressed: _exportJson,
-                    icon: const Icon(Icons.download, size: 16),
-                    text: 'Eksporter JSON',
-                    variant: ButtonVariant.outline,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: SkaButton(
-                    onPressed: _economicConnected && !_isSending ? _sendToEconomic : null,
-                    icon: const Icon(Icons.send, size: 16),
-                    text: _isSending ? 'Sender...' : 'Send til e-conomic',
-                    size: ButtonSize.xl,
-                    loading: _isSending,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 500;
+                if (isNarrow) {
+                  // Stack buttons vertically on narrow screens
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SkaButton(
+                        onPressed: _economicConnected && !_isSending ? _sendToEconomic : null,
+                        icon: const Icon(Icons.send, size: 16),
+                        text: _isSending ? 'Sender...' : 'Send til e-conomic',
+                        size: ButtonSize.xl,
+                        loading: _isSending,
+                      ),
+                      const SizedBox(height: 8),
+                      SkaButton(
+                        onPressed: _exportJson,
+                        icon: const Icon(Icons.download, size: 16),
+                        text: 'Eksporter JSON',
+                        variant: ButtonVariant.outline,
+                      ),
+                    ],
+                  );
+                }
+                // Horizontal layout for wider screens
+                return Row(
+                  children: [
+                    Expanded(
+                      child: SkaButton(
+                        onPressed: _exportJson,
+                        icon: const Icon(Icons.download, size: 16),
+                        text: 'Eksporter JSON',
+                        variant: ButtonVariant.outline,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: SkaButton(
+                        onPressed: _economicConnected && !_isSending ? _sendToEconomic : null,
+                        icon: const Icon(Icons.send, size: 16),
+                        text: _isSending ? 'Sender...' : 'Send til e-conomic',
+                        size: ButtonSize.xl,
+                        loading: _isSending,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],

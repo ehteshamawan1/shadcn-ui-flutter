@@ -101,12 +101,25 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
     final serieController = TextEditingController(text: affugter?.serie);
     final noteController = TextEditingController(text: affugter?.note);
 
-    String selectedType = affugter?.type ?? 'adsorption';
-    String selectedMaerke = affugter?.maerke ?? 'Master';
-    String selectedStatus = affugter?.status ?? 'hjemme';
-
     final types = ['adsorption', 'kondens'];
     final maerker = ['Master', 'Fral', 'Qube', 'Andet'];
+    final statuses = ['hjemme', 'udlejet', 'defekt'];
+
+    // Validate and sanitize values to prevent dropdown assertion errors
+    String selectedType = affugter?.type ?? 'adsorption';
+    if (!types.contains(selectedType)) {
+      selectedType = types.first;
+    }
+
+    String selectedMaerke = affugter?.maerke ?? 'Master';
+    if (!maerker.contains(selectedMaerke)) {
+      selectedMaerke = maerker.first;
+    }
+
+    String selectedStatus = affugter?.status ?? 'hjemme';
+    if (!statuses.contains(selectedStatus)) {
+      selectedStatus = statuses.first;
+    }
 
     await showDialog(
       context: context,
@@ -157,7 +170,7 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
                   DropdownButtonFormField<String>(
                     value: selectedStatus,
                     decoration: const InputDecoration(labelText: 'Status *'),
-                    items: ['hjemme', 'udlejet', 'defekt']
+                    items: statuses
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),
                     onChanged: (v) => setDialogState(() => selectedStatus = v!),

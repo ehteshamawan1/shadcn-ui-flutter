@@ -122,8 +122,10 @@ class _BlokAdministrationScreenState extends State<BlokAdministrationScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(_editingId != null ? 'Rediger Blok' : 'Opret Blok'),
-          content: SingleChildScrollView(
-            child: Form(
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width > 550 ? 500 : MediaQuery.of(context).size.width - 80,
+            child: SingleChildScrollView(
+              child: Form(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -150,10 +152,11 @@ class _BlokAdministrationScreenState extends State<BlokAdministrationScreen> {
                   DropdownButtonFormField<String>(
                     value: _selectedPricingModel,
                     decoration: const InputDecoration(labelText: 'Prismodel *'),
-                    items: const [
-                      DropdownMenuItem(value: 'dagsleje', child: Text('Dagsleje (individuelle priser)')),
-                      DropdownMenuItem(value: 'fast_pris_per_lejlighed', child: Text('Fast pris pr. lejlighed')),
-                      DropdownMenuItem(value: 'fast_pris_per_m2', child: Text('Fast pris pr. m²')),
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem(value: 'dagsleje', child: Text('Dagsleje (individuelle priser)', overflow: TextOverflow.ellipsis)),
+                      const DropdownMenuItem(value: 'fast_pris_per_lejlighed', child: Text('Fast pris pr. lejlighed', overflow: TextOverflow.ellipsis)),
+                      const DropdownMenuItem(value: 'fast_pris_per_m2', child: Text('Fast pris pr. m²', overflow: TextOverflow.ellipsis)),
                     ],
                     onChanged: (value) {
                       setDialogState(() => _selectedPricingModel = value!);
@@ -211,6 +214,7 @@ class _BlokAdministrationScreenState extends State<BlokAdministrationScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
           actions: [

@@ -141,11 +141,25 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   // Use the new comprehensive theme system matching React app
-  static ThemeData get lightTheme => AppTheme.lightTheme.copyWith(
+  static ThemeData get lightTheme {
+    try {
+      return AppTheme.lightTheme.copyWith(
         textTheme: GoogleFonts.interTextTheme(AppTheme.lightTheme.textTheme),
       );
+    } catch (e) {
+      // Fallback to system font if Google Fonts fails to load (e.g., during hot restart on web)
+      return AppTheme.lightTheme;
+    }
+  }
 
-  static ThemeData get darkTheme => AppTheme.darkTheme.copyWith(
+  static ThemeData get darkTheme {
+    try {
+      return AppTheme.darkTheme.copyWith(
         textTheme: GoogleFonts.interTextTheme(AppTheme.darkTheme.textTheme),
       );
+    } catch (e) {
+      // Fallback to system font if Google Fonts fails to load (e.g., during hot restart on web)
+      return AppTheme.darkTheme;
+    }
+  }
 }

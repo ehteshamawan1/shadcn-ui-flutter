@@ -77,9 +77,10 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         SkaCard(
           padding: EdgeInsets.zero,
           child: Column(
@@ -201,7 +202,9 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.s4), // Bottom padding
       ],
+      ),
     );
   }
 

@@ -665,24 +665,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTypography.sm.copyWith(
-                  color: AppColors.mutedForeground,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.sm.copyWith(
+                    color: AppColors.mutedForeground,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: AppTypography.xl2Bold.copyWith(
-                  color: valueColor,
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: AppTypography.xl2Bold.copyWith(
+                    color: valueColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Icon(icon, size: 32, color: iconColor),
         ],
       ),
@@ -786,9 +793,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SkaBadge(
+                    SkaBadge.status(
                       text: 'Aktiv',
-                      variant: BadgeVariant.outline,
+                      status: 'aktiv',
                       small: true,
                     ),
                     const SizedBox(width: AppSpacing.s2),

@@ -152,7 +152,7 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
             ],
           ),
           content: SizedBox(
-            width: 500,
+            width: MediaQuery.of(context).size.width > 550 ? 500 : MediaQuery.of(context).size.width - 80,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -212,78 +212,152 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedType,
-                          decoration: const InputDecoration(
-                            labelText: 'Type',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 400;
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedType, _typeOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Type',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _typeOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedType = value);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedMaerke, _brandOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Mærke',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _brandOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedMaerke = value);
+                                }
+                              },
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedType, _typeOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Type',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _typeOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedType = value);
+                                }
+                              },
+                            ),
                           ),
-                          items: _typeOptions.map((opt) => DropdownMenuItem(
-                            value: opt.value,
-                            child: Text(opt.label),
-                          )).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() => selectedType = value);
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedMaerke,
-                          decoration: const InputDecoration(
-                            labelText: 'Mærke',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedMaerke, _brandOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Mærke',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _brandOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedMaerke = value);
+                                }
+                              },
+                            ),
                           ),
-                          items: _brandOptions.map((opt) => DropdownMenuItem(
-                            value: opt.value,
-                            child: Text(opt.label),
-                          )).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() => selectedMaerke = value);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: modelController,
-                          decoration: const InputDecoration(
-                            labelText: 'Model',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 400;
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            TextField(
+                              controller: modelController,
+                              decoration: const InputDecoration(
+                                labelText: 'Model',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: serieController,
+                              decoration: const InputDecoration(
+                                labelText: 'Serienummer',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: modelController,
+                              decoration: const InputDecoration(
+                                labelText: 'Model',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: serieController,
-                          decoration: const InputDecoration(
-                            labelText: 'Serienummer',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: serieController,
+                              decoration: const InputDecoration(
+                                labelText: 'Serienummer',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    value: _getValidValue(selectedStatus, _statusOptions),
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       border: OutlineInputBorder(),
@@ -405,7 +479,7 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
             ],
           ),
           content: SizedBox(
-            width: 500,
+            width: MediaQuery.of(context).size.width > 550 ? 500 : MediaQuery.of(context).size.width - 80,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -435,74 +509,148 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _getValidValue(selectedType, _typeOptions),
-                          decoration: const InputDecoration(
-                            labelText: 'Type',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 400;
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedType, _typeOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Type',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _typeOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedType = value);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedMaerke, _brandOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Mærke',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _brandOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedMaerke = value);
+                                }
+                              },
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedType, _typeOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Type',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _typeOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedType = value);
+                                }
+                              },
+                            ),
                           ),
-                          items: _typeOptions.map((opt) => DropdownMenuItem(
-                            value: opt.value,
-                            child: Text(opt.label),
-                          )).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() => selectedType = value);
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _getValidValue(selectedMaerke, _brandOptions),
-                          decoration: const InputDecoration(
-                            labelText: 'Mærke',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _getValidValue(selectedMaerke, _brandOptions),
+                              decoration: const InputDecoration(
+                                labelText: 'Mærke',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _brandOptions.map((opt) => DropdownMenuItem(
+                                value: opt.value,
+                                child: Text(opt.label),
+                              )).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => selectedMaerke = value);
+                                }
+                              },
+                            ),
                           ),
-                          items: _brandOptions.map((opt) => DropdownMenuItem(
-                            value: opt.value,
-                            child: Text(opt.label),
-                          )).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() => selectedMaerke = value);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: modelController,
-                          decoration: const InputDecoration(
-                            labelText: 'Model',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 400;
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            TextField(
+                              controller: modelController,
+                              decoration: const InputDecoration(
+                                labelText: 'Model',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: serieController,
+                              decoration: const InputDecoration(
+                                labelText: 'Serienummer',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: modelController,
+                              decoration: const InputDecoration(
+                                labelText: 'Model',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: serieController,
-                          decoration: const InputDecoration(
-                            labelText: 'Serienummer',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: serieController,
+                              decoration: const InputDecoration(
+                                labelText: 'Serienummer',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -593,11 +741,20 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
   }
 
   /// Get valid value from options list, fallback to first option or 'Andet' if not found
+  /// Returns null if options is empty to prevent assertion errors
   String? _getValidValue(String value, List<DropdownOption> options) {
-    if (options.isEmpty) return null;
+    if (options.isEmpty) {
+      // Return null if no options available - prevents assertion errors
+      debugPrint('Warning: Empty options list in dropdown');
+      return null;
+    }
+
+    // Check if the value exists in options (exact match)
     final hasValue = options.any((opt) => opt.value == value);
     if (hasValue) return value;
-    // Try to find 'Andet' as fallback
+
+    debugPrint('Warning: Value "$value" not found in dropdown options, using fallback');
+    // Try to find 'Andet' as fallback, otherwise use first option
     final andetOption = options.firstWhere(
       (opt) => opt.value.toLowerCase() == 'andet',
       orElse: () => options.first,

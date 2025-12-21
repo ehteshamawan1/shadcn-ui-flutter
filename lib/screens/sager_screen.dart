@@ -476,107 +476,117 @@ class _SagerScreenState extends State<SagerScreen> {
         bottom: false,
         child: Padding(
           padding: AppSpacing.symmetric(horizontal: AppSpacing.s4, vertical: AppSpacing.s3),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
             children: [
-              SkaButton(
-                variant: ButtonVariant.ghost,
-                size: ButtonSize.icon,
-                icon: const Icon(Icons.arrow_back, size: 18),
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    Navigator.of(context).pushReplacementNamed('/dashboard');
-                  }
-                },
-              ),
-              const SizedBox(width: AppSpacing.s2),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      titleText,
-                      style: AppTypography.xlBold.copyWith(
-                        color: AppColors.foreground,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
+              Row(
+                children: [
+                  SkaButton(
+                    variant: ButtonVariant.ghost,
+                    size: ButtonSize.icon,
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        Navigator.of(context).pushReplacementNamed('/dashboard');
+                      }
+                    },
+                  ),
+                  const SizedBox(width: AppSpacing.s2),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Text(
+                          titleText,
+                          style: AppTypography.xlBold.copyWith(
+                            color: AppColors.foreground,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
                         Text(
                           subtitleText,
                           style: AppTypography.sm.copyWith(
                             color: AppColors.mutedForeground,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (_attentionCount > 0 && !_showArchived) ...[
-                          const SizedBox(width: 8),
+                        if (_attentionCount > 0 && !_showArchived)
                           Text(
-                            '- $_attentionCount krAÝver opmAÝrksomhed',
+                            '$_attentionCount kraever opmaerksomhed',
                             style: AppTypography.smMedium.copyWith(
                               color: AppColors.warning,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Wrap(
-                spacing: AppSpacing.s2,
-                runSpacing: AppSpacing.s2,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (_isSelectionMode) ...[
-                    SkaButton(
-                      variant: ButtonVariant.ghost,
-                      size: ButtonSize.icon,
-                      icon: Icon(
-                        _selectedSagerIds.length == _filteredSager.length ? Icons.deselect : Icons.select_all,
-                        size: 18,
-                      ),
-                      onPressed: _selectAll,
-                    ),
-                    SkaButton(
-                      variant: ButtonVariant.outline,
-                      size: ButtonSize.sm,
-                      icon: const Icon(Icons.send, size: 16),
-                      text: 'Eksporter',
-                      onPressed: _exportSelectedToEconomic,
-                    ),
-                  ] else ...[
-                    _buildSyncStatus(),
-                    if (isAdmin && _attentionCount > 0)
-                      _buildAttentionFilterButton(),
-                    const ThemeToggle(),
-                    if (isAdmin)
+              const SizedBox(height: AppSpacing.s2),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (_isSelectionMode) ...[
                       SkaButton(
                         variant: ButtonVariant.ghost,
                         size: ButtonSize.icon,
-                        icon: const Icon(Icons.download, size: 18),
-                        onPressed: _showExportMenu,
+                        icon: Icon(
+                          _selectedSagerIds.length == _filteredSager.length ? Icons.deselect : Icons.select_all,
+                          size: 18,
+                        ),
+                        onPressed: _selectAll,
                       ),
-                    SkaButton(
-                      variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
-                      size: ButtonSize.sm,
-                      icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
-                      text: _showArchived
-                          ? 'Vis Aktive ($activeCount)'
-                          : 'Vis Arkiverede ($archivedCount)',
-                      onPressed: _toggleArchiveFilter,
-                    ),
-                    if (canCreateSager && !_showArchived)
+                      const SizedBox(width: AppSpacing.s2),
                       SkaButton(
-                        icon: const Icon(Icons.add, size: 16),
-                        text: 'Ny Sag',
-                        onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                        variant: ButtonVariant.outline,
+                        size: ButtonSize.sm,
+                        icon: const Icon(Icons.send, size: 16),
+                        text: 'Eksporter',
+                        onPressed: _exportSelectedToEconomic,
                       ),
+                    ] else ...[
+                      _buildSyncStatus(),
+                      const SizedBox(width: AppSpacing.s2),
+                      if (isAdmin && _attentionCount > 0) ...[
+                        _buildAttentionFilterButton(),
+                        const SizedBox(width: AppSpacing.s2),
+                      ],
+                      const ThemeToggle(),
+                      if (isAdmin) ...[
+                        const SizedBox(width: AppSpacing.s2),
+                        SkaButton(
+                          variant: ButtonVariant.ghost,
+                          size: ButtonSize.icon,
+                          icon: const Icon(Icons.download, size: 18),
+                          onPressed: _showExportMenu,
+                        ),
+                      ],
+                      const SizedBox(width: AppSpacing.s2),
+                      SkaButton(
+                        variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
+                        size: ButtonSize.sm,
+                        icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
+                        text: _showArchived
+                            ? 'Vis Aktive ($activeCount)'
+                            : 'Vis Arkiverede ($archivedCount)',
+                        onPressed: _toggleArchiveFilter,
+                      ),
+                      if (canCreateSager && !_showArchived) ...[
+                        const SizedBox(width: AppSpacing.s2),
+                        SkaButton(
+                          icon: const Icon(Icons.add, size: 16),
+                          text: 'Ny Sag',
+                          onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                        ),
+                      ],
+                    ],
                   ],
-                ],
+                ),
               ),
             ],
           ),
