@@ -317,7 +317,7 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
           _buildSectionCard(
             theme,
             'Indtægter',
-            Icons.attach_money,
+            Icons.payments,
             Colors.green,
             [
               _buildLineItem('Timer:', _formatCurrency(r.registeredBillableRevenue)),

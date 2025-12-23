@@ -16,7 +16,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_typography.dart';
 import '../widgets/access_controlled_widget.dart';
 import '../widgets/offline_indicator.dart';
-import '../widgets/project_leader_dropdown.dart';
+import '../widgets/settings_dropdown.dart';
 import '../widgets/responsive_builder.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/ui/ska_badge.dart';
@@ -115,7 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Icon(Icons.nfc, size: 32, color: AppColors.primary),
               const SizedBox(height: AppSpacing.s4),
               Text(
-                'Udstyr info',
+                'Udstyrs info',
                 style: AppTypography.lgSemibold.copyWith(color: AppColors.foreground),
               ),
               const SizedBox(height: AppSpacing.s2),
@@ -203,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
     await SkaDialog.show(
       context: context,
-      title: 'Udstyr information',
+      title: 'Udstyrs information',
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -368,15 +368,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'SKA-DAN',
-                      style: AppTypography.style(
-                        size: AppTypography.textXl,
-                        weight: AppTypography.fontBold,
-                        color: AppColors.titleBlue,
-                      ),
+                    Image.asset(
+                      'assets/images/logo.png',
+                      height: 40,
+                      fit: BoxFit.contain,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       'Velkommen, $userName',
                       style: AppTypography.sm.copyWith(
@@ -390,10 +387,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 spacing: AppSpacing.s2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  ProjectLeaderDropdown(
-                    currentSag: currentSag,
-                    showWhenEmpty: true,
-                  ),
+                  const SettingsDropdown(),
+                  const SizedBox(width: AppSpacing.s2),
                   const ThemeToggle(),
                   const OfflineIndicator(),
                   SkaBadge(
@@ -501,7 +496,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       actions.add(
         _buildActionButton(
-          title: 'Udstyr info',
+          title: 'Udstyrs info',
           subtitle: 'Slå udstyr op via NFC',
           icon: Icons.nfc,
           variant: ButtonVariant.outline,
@@ -520,7 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onTap: () => Navigator.pushNamed(context, '/affugtere'),
         ),
         _buildActionButton(
-          title: 'Udstyr Oversigt',
+          title: 'Udstyrs Oversigt',
           subtitle: 'Alt udstyr på tværs af sager',
           icon: Icons.build,
           variant: ButtonVariant.outline,

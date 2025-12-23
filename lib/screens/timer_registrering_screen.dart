@@ -33,13 +33,13 @@ class _TimerRegistreringScreenState extends State<TimerRegistreringScreen> {
   late List<TimerLog> _timerLogs;
 
   final List<String> _workTypes = [
-    'Setup',
-    'Takedown',
-    'Inspection',
-    'Measurements',
-    'Mold',
-    'Drilling',
-    'Other',
+    'Opsætning',
+    'Nedtagning',
+    'Tilsyn',
+    'Målinger',
+    'Skimmel',
+    'Boring af drænhuller',
+    'Andet',
   ];
 
   @override

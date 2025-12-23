@@ -445,7 +445,7 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
     if (category.startsWith('blok_')) return Icons.view_quilt;
     if (category.contains('overhead')) return Icons.percent;
     if (category.contains('drift')) return Icons.settings;
-    return Icons.attach_money;
+    return Icons.payments;
   }
 
   void _showInfoDialog() {

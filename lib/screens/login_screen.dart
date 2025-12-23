@@ -82,14 +82,13 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Header
-          Text(
-            'SKA-DAN',
-            style: AppTypography.xl2Bold.copyWith(
-              color: AppColors.titleBlue,
-            ),
+          // Header - Logo
+          Image.asset(
+            'assets/images/logo.png',
+            height: 60,
+            fit: BoxFit.contain,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Text(
             'Indtast din 4-cifrede kode',
             style: AppTypography.sm.copyWith(

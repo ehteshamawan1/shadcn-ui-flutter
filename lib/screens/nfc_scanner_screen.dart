@@ -189,11 +189,17 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                     controller: tagIdController,
                     decoration: const InputDecoration(
                       labelText: 'Tag nummer',
+                      hintText: 'F.eks. 2-2345',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Angiv tag nummer';
+                      }
+                      // X-XXXX format validation
+                      final regex = RegExp(r'^\d-\d{4}$');
+                      if (!regex.hasMatch(value)) {
+                        return 'Format skal være X-XXXX (f.eks. 2-2345)';
                       }
                       return null;
                     },
@@ -243,14 +249,6 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                       labelText: 'Model',
                       border: OutlineInputBorder(),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: writeToTag,
-                    onChanged: (value) => setState(() => writeToTag = value),
-                    title: const Text('Skriv til NFC-tag nu'),
-                    subtitle: const Text('Hold telefonen paa tagget under skrivning'),
                   ),
                 ],
               ),

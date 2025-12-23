@@ -717,7 +717,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: Colors.purple.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.attach_money, color: Colors.purple),
+                  child: const Icon(Icons.payments, color: Colors.purple),
                 ),
                 title: const Text('Kostpriser'),
                 subtitle: const Text('Administrer kost- og salgspriser'),

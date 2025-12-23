@@ -16,6 +16,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_typography.dart';
+import '../widgets/settings_dropdown.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/ui/ska_badge.dart';
 import '../widgets/ui/ska_button.dart';
@@ -515,7 +516,7 @@ class _SagerScreenState extends State<SagerScreen> {
                         ),
                         if (_attentionCount > 0 && !_showArchived)
                           Text(
-                            '$_attentionCount kraever opmaerksomhed',
+                            '$_attentionCount kræver opmærksomhed',
                             style: AppTypography.smMedium.copyWith(
                               color: AppColors.warning,
                             ),
@@ -527,65 +528,70 @@ class _SagerScreenState extends State<SagerScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.s2),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (_isSelectionMode) ...[
-                      SkaButton(
-                        variant: ButtonVariant.ghost,
-                        size: ButtonSize.icon,
-                        icon: Icon(
-                          _selectedSagerIds.length == _filteredSager.length ? Icons.deselect : Icons.select_all,
-                          size: 18,
-                        ),
-                        onPressed: _selectAll,
-                      ),
-                      const SizedBox(width: AppSpacing.s2),
-                      SkaButton(
-                        variant: ButtonVariant.outline,
-                        size: ButtonSize.sm,
-                        icon: const Icon(Icons.send, size: 16),
-                        text: 'Eksporter',
-                        onPressed: _exportSelectedToEconomic,
-                      ),
-                    ] else ...[
-                      _buildSyncStatus(),
-                      const SizedBox(width: AppSpacing.s2),
-                      if (isAdmin && _attentionCount > 0) ...[
-                        _buildAttentionFilterButton(),
-                        const SizedBox(width: AppSpacing.s2),
-                      ],
-                      const ThemeToggle(),
-                      if (isAdmin) ...[
-                        const SizedBox(width: AppSpacing.s2),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (_isSelectionMode) ...[
                         SkaButton(
                           variant: ButtonVariant.ghost,
                           size: ButtonSize.icon,
-                          icon: const Icon(Icons.download, size: 18),
-                          onPressed: _showExportMenu,
+                          icon: Icon(
+                            _selectedSagerIds.length == _filteredSager.length ? Icons.deselect : Icons.select_all,
+                            size: 18,
+                          ),
+                          onPressed: _selectAll,
                         ),
-                      ],
-                      const SizedBox(width: AppSpacing.s2),
-                      SkaButton(
-                        variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
-                        size: ButtonSize.sm,
-                        icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
-                        text: _showArchived
-                            ? 'Vis Aktive ($activeCount)'
-                            : 'Vis Arkiverede ($archivedCount)',
-                        onPressed: _toggleArchiveFilter,
-                      ),
-                      if (canCreateSager && !_showArchived) ...[
                         const SizedBox(width: AppSpacing.s2),
                         SkaButton(
-                          icon: const Icon(Icons.add, size: 16),
-                          text: 'Ny Sag',
-                          onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                          variant: ButtonVariant.outline,
+                          size: ButtonSize.sm,
+                          icon: const Icon(Icons.send, size: 16),
+                          text: 'Eksporter',
+                          onPressed: _exportSelectedToEconomic,
                         ),
+                      ] else ...[
+                        _buildSyncStatus(),
+                        const SizedBox(width: AppSpacing.s2),
+                        if (isAdmin && _attentionCount > 0) ...[
+                          _buildAttentionFilterButton(),
+                          const SizedBox(width: AppSpacing.s2),
+                        ],
+                        const SettingsDropdown(),
+                        const SizedBox(width: AppSpacing.s2),
+                        const ThemeToggle(),
+                        if (isAdmin) ...[
+                          const SizedBox(width: AppSpacing.s2),
+                          SkaButton(
+                            variant: ButtonVariant.ghost,
+                            size: ButtonSize.icon,
+                            icon: const Icon(Icons.download, size: 18),
+                            onPressed: _showExportMenu,
+                          ),
+                        ],
+                        const SizedBox(width: AppSpacing.s2),
+                        SkaButton(
+                          variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
+                          size: ButtonSize.sm,
+                          icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
+                          text: _showArchived
+                              ? 'Vis Aktive ($activeCount)'
+                              : 'Vis Arkiverede ($archivedCount)',
+                          onPressed: _toggleArchiveFilter,
+                        ),
+                        if (canCreateSager && !_showArchived) ...[
+                          const SizedBox(width: AppSpacing.s2),
+                          SkaButton(
+                            icon: const Icon(Icons.add, size: 16),
+                            text: 'Ny Sag',
+                            onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                          ),
+                        ],
                       ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -649,7 +655,7 @@ class _SagerScreenState extends State<SagerScreen> {
           variant: _showOnlyNeedsAttention ? ButtonVariant.primary : ButtonVariant.outline,
           size: ButtonSize.sm,
           icon: const Icon(Icons.notifications, size: 16),
-          text: 'KrAÝver opmAÝrksomhed ($_attentionCount)',
+          text: 'Kræver opmærksomhed ($_attentionCount)',
           onPressed: () {
             setState(() {
               _showOnlyNeedsAttention = !_showOnlyNeedsAttention;
@@ -873,7 +879,7 @@ class _SagerScreenState extends State<SagerScreen> {
     final items = <Widget>[];
     if (showAttention && stats['needsAttention']! > 0) {
       items.add(_buildStatCard(
-        label: 'OpmAÝrksomhed',
+        label: 'Opmærksomhed',
         value: stats['needsAttention']!,
         background: AppColors.warningLight,
         foreground: AppColors.warning,
@@ -1114,7 +1120,7 @@ class _SagerScreenState extends State<SagerScreen> {
                                         const Icon(Icons.notifications, size: 12, color: AppColors.warning),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'KrAÝver opmAÝrksomhed',
+                                          'Kræver opmærksomhed',
                                           style: AppTypography.xsMedium.copyWith(color: AppColors.warning),
                                         ),
                                       ],

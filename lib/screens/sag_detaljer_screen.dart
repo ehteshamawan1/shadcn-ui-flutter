@@ -75,7 +75,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     {'key': 'timer', 'label': 'Timer', 'icon': Icons.timer},
     {'key': 'beskeder', 'label': 'Beskeder', 'icon': Icons.chat_bubble_outline},
     {'key': 'aktivitet', 'label': 'Aktivitetslog', 'icon': Icons.list_alt},
-    {'key': 'priser', 'label': 'Priser', 'icon': Icons.attach_money},
+    {'key': 'priser', 'label': 'Priser', 'icon': Icons.payments},
     {'key': 'rentabilitet', 'label': 'Rentabilitet', 'icon': Icons.savings},
     {'key': 'faktura', 'label': 'Fakturaer', 'icon': Icons.receipt_long},
     {'key': 'backup', 'label': 'Backup', 'icon': Icons.backup},
@@ -1521,7 +1521,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       {'key': 'faktura', 'label': 'Fakturaer', 'icon': Icons.receipt_long},
       {'key': 'backup', 'label': 'Data Backup & Restore', 'icon': Icons.backup},
       {'key': 'admin', 'label': 'Administration', 'icon': Icons.admin_panel_settings},
-      {'key': 'priser', 'label': 'Priser', 'icon': Icons.attach_money},
+      {'key': 'priser', 'label': 'Priser', 'icon': Icons.payments},
     ];
 
     final visibleItems = items.where((item) => _canShowTab(item['key'] as String)).toList();
@@ -2707,6 +2707,12 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                   );
                   return;
                 }
+                if (text.length > 1000) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Besked er for lang (max 1000 tegn)')),
+                  );
+                  return;
+                }
 
                 String? targetUserName;
                 if (targetUserId != null) {
@@ -2733,30 +2739,44 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                   readAt: null,
                 );
 
-                await _dbService.addMessage(msg);
-                if (mounted) {
-                  setState(() {
-                    _messages = _dbService.getMessagesBySag(widget.sagId);
-                    _activityLogs = _dbService.getActivityLogsBySag(widget.sagId);
-                  });
-                }
+                try {
+                  await _dbService.addMessage(msg);
 
-                if (context.mounted) {
-                  Navigator.pop(dialogContext);
-                }
+                  if (mounted) {
+                    setState(() {
+                      _messages = _dbService.getMessagesBySag(widget.sagId);
+                      _activityLogs = _dbService.getActivityLogsBySag(widget.sagId);
+                    });
+                  }
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        targetUserId == null
-                            ? 'Besked sendt til alle medarbejdere'
-                            : 'Besked sendt til ${targetUserName ?? "valgt medarbejder"}',
+                  if (context.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          targetUserId == null
+                              ? 'Besked sendt til alle medarbejdere'
+                              : 'Besked sendt til ${targetUserName ?? "valgt medarbejder"}',
+                        ),
+                        backgroundColor: AppColors.success,
+                        duration: const Duration(seconds: 2),
                       ),
-                      backgroundColor: AppColors.success,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                    );
+                  }
+                } catch (e) {
+                  debugPrint('Error sending message: $e');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Fejl ved afsendelse af besked: ${e.toString()}'),
+                        backgroundColor: AppColors.error,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
                 }
               },
             ),
@@ -3111,7 +3131,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           // Header
           Row(
             children: [
-              const Icon(Icons.attach_money, size: 28),
+              const Icon(Icons.payments, size: 28),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(

@@ -278,7 +278,7 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Udstyr oversigt'),
+        title: const Text('Udstyrs Oversigt'),
         elevation: 0,
         actions: const [
           ThemeToggle(),

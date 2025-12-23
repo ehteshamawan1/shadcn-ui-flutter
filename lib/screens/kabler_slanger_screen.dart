@@ -359,7 +359,7 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
                     child: _buildStatCard(
                       'Værdi (DKK)',
                       totalValue.toStringAsFixed(0),
-                      Icons.attach_money,
+                      Icons.payments,
                       AppColors.success,
                     ),
                   ),
