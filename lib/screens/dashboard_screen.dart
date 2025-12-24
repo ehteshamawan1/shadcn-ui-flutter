@@ -785,56 +785,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.s2),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SkaBadge.status(
-                      text: 'Aktiv',
-                      status: 'aktiv',
-                      small: true,
-                    ),
-                    const SizedBox(width: AppSpacing.s2),
-                    if (_authService.hasFeature(AppFeatures.nfcScanning))
-                      SkaButton(
-                        variant: ButtonVariant.outline,
-                        size: ButtonSize.sm,
-                        onPressed: () => Navigator.pushNamed(context, '/nfc-scanner/${sag.id}'),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.smartphone, size: 14, color: AppColors.primary),
-                            const SizedBox(width: 4),
-                            Text(
-                              'NFC',
-                              style: AppTypography.xsMedium.copyWith(
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SkaBadge.status(
+                        text: 'Aktiv',
+                        status: 'aktiv',
+                        small: true,
                       ),
-                    if (_authService.hasFeature(AppFeatures.timeTracking)) ...[
                       const SizedBox(width: AppSpacing.s2),
-                      SkaButton(
-                        variant: ButtonVariant.outline,
-                        size: ButtonSize.sm,
-                        onPressed: () => Navigator.pushNamed(context, '/timer/${sag.id}'),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.timer, size: 14, color: AppColors.success),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Timer',
-                              style: AppTypography.xsMedium.copyWith(
-                                color: AppColors.success,
+                      if (_authService.hasFeature(AppFeatures.nfcScanning))
+                        Flexible(
+                          child: SkaButton(
+                            variant: ButtonVariant.outline,
+                            size: ButtonSize.sm,
+                            onPressed: () => Navigator.pushNamed(context, '/nfc-scanner/${sag.id}'),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.smartphone, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 2),
+                                  const Text(
+                                    'NFC',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      if (_authService.hasFeature(AppFeatures.timeTracking)) ...[
+                        const SizedBox(width: AppSpacing.s2),
+                        Flexible(
+                          child: SkaButton(
+                            variant: ButtonVariant.outline,
+                            size: ButtonSize.sm,
+                            onPressed: () => Navigator.pushNamed(context, '/timer/${sag.id}'),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.timer, size: 14, color: AppColors.success),
+                                  const SizedBox(width: 2),
+                                  const Text(
+                                    'Timer',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),

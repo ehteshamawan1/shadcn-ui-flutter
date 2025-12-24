@@ -1397,20 +1397,29 @@ class _SagerScreenState extends State<SagerScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Icon(Icons.calendar_today, size: 14, color: AppColors.mutedForeground),
-            const SizedBox(width: 6),
-            Text(
-              'Oprettet: ${_formatDate(createdAt)}',
-              style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
-            ),
-          ],
+        Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.calendar_today, size: 14, color: AppColors.mutedForeground),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Oprettet: ${_formatDate(createdAt)}',
+                  style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
-        Wrap(
-          spacing: AppSpacing.s2,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
+        const SizedBox(width: AppSpacing.s2),
+        Flexible(
+          child: Wrap(
+            spacing: AppSpacing.s2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.end,
+            children: [
             if (sag.arkiveret == true && sag.arkiveretDato != null)
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1429,7 +1438,8 @@ class _SagerScreenState extends State<SagerScreen> {
                 variant: BadgeVariant.outline,
                 small: true,
               ),
-          ],
+            ],
+          ),
         ),
       ],
     );

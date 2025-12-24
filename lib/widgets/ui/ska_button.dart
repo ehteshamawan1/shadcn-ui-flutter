@@ -245,7 +245,7 @@ class SkaButton extends StatelessWidget {
       case ButtonSize.lg:
         return 44; // h-11
       case ButtonSize.xl:
-        return 48; // h-12
+        return 56; // h-14 (increased for two-line content)
       case ButtonSize.icon:
         return 40; // h-10 w-10
     }
