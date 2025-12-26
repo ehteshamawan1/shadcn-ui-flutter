@@ -315,16 +315,16 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                         if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                               content: Row(
                                 children: [
-                                  const Icon(Icons.check_circle, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(writeToTag ? 'NFC-tag programmeret og udstyr oprettet!' : 'Udstyr oprettet'),
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text('NFC-tag programmeret og udstyr oprettet!'),
                                 ],
                               ),
                               backgroundColor: Colors.green,
-                              duration: const Duration(seconds: 3),
+                              duration: Duration(seconds: 3),
                             ),
                           );
                           _searchEquipment(tagNumber);

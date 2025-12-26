@@ -47,5 +47,13 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Appen bruger mikrofonen til tale-til-tekst i beskeder.</string>
+	<key>NSDocumentUsageDescription</key>
+	<string>Appen har brug for adgang til filer for at gemme og gendanne backups.</string>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>

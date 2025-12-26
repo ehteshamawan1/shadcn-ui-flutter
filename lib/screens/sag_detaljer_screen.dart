@@ -801,15 +801,17 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         children: [
           _buildHeader(sag, isAdmin: isAdmin),
           Expanded(
-            child: Padding(
-              padding: AppSpacing.p4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTabMenu(),
-                  const SizedBox(height: AppSpacing.s6),
-                  Expanded(child: _buildTabContent(sag)),
-                ],
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: AppSpacing.p4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTabMenu(),
+                    const SizedBox(height: AppSpacing.s6),
+                    _buildTabContent(sag),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1076,32 +1078,34 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   }
 
   Widget _buildTabMenu() {
-    final isWide = MediaQuery.of(context).size.width >= Breakpoints.lg;
-    final content = Container(
-      padding: AppSpacing.p1,
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: AppRadius.radiusLg,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: isWide
-          ? Wrap(
-              spacing: AppSpacing.s1,
-              runSpacing: AppSpacing.s1,
-              children: _visibleTabs.map(_buildTabChip).toList(),
-            )
-          : Row(
-              children: _visibleTabs.map(_buildTabChip).toList(),
-            ),
-    );
+    final screenWidth = MediaQuery.of(context).size.width;
 
-    if (isWide) {
-      return content;
+    // Calculate columns based on screen size - desktop has more columns for 2 rows
+    int crossAxisCount;
+    if (screenWidth >= Breakpoints.lg) {
+      crossAxisCount = 7; // Desktop: 7 columns (13 tabs = 2 rows: 7 + 6)
+    } else if (screenWidth >= Breakpoints.md) {
+      crossAxisCount = 4; // Tablet: 4 columns
+    } else {
+      crossAxisCount = 2; // Mobile: 2 columns (matching React)
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: content,
+    return Container(
+      padding: const EdgeInsets.all(4.0), // Minimal padding
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: GridView.count(
+        crossAxisCount: crossAxisCount,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(), // Tabs don't scroll separately
+        crossAxisSpacing: 4.0,
+        mainAxisSpacing: 4.0,
+        childAspectRatio: screenWidth >= Breakpoints.lg ? 7.5 : 4.5, // Adjusted for larger text
+        children: _visibleTabs.map(_buildTabChip).toList(),
+      ),
     );
   }
 
@@ -1131,33 +1135,37 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         : Colors.transparent;
     final bgColor = isActive ? (accent ?? AppColors.background) : accentBg;
     final borderColor = isActive ? (accent ?? AppColors.border) : accentBorder;
-    final textColor = isActive
-        ? (accent != null ? AppColors.primaryForeground : AppColors.foreground)
-        : (accent ?? AppColors.mutedForeground);
+    // ALWAYS use white text on colored tabs (active or inactive)
+    final textColor = accent != null
+        ? Colors.white  // White text on colored backgrounds
+        : (isActive ? AppColors.foreground : AppColors.mutedForeground);
 
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.s1),
-      child: InkWell(
-        onTap: () => setState(() => _activeTab = tab['key'] as String),
-        borderRadius: AppRadius.radiusMd,
-        child: Container(
-          padding: AppSpacing.symmetric(horizontal: AppSpacing.s3, vertical: AppSpacing.s2),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: AppRadius.radiusMd,
-            border: Border.all(
-              color: borderColor,
-              width: 1,
-            ),
+    return InkWell(
+      onTap: () => setState(() => _activeTab = tab['key'] as String),
+      borderRadius: BorderRadius.circular(4.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(4.0),
+          border: Border.all(
+            color: borderColor,
+            width: 1,
           ),
+        ),
+        child: Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(tab['icon'] as IconData, size: 14, color: textColor),
-              const SizedBox(width: AppSpacing.s1),
+              Icon(tab['icon'] as IconData, size: 16, color: textColor),
+              const SizedBox(width: 4),
               Text(
                 tab['label'] as String,
-                style: AppTypography.smMedium.copyWith(color: textColor),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ).copyWith(color: textColor),
               ),
             ],
           ),

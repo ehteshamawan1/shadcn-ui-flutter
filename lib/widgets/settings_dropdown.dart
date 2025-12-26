@@ -18,8 +18,8 @@ class SettingsDropdown extends StatelessWidget {
       offset: const Offset(0, 40),
       onSelected: (value) {
         if (value == 'admin') {
-          // Navigate to Admin Settings
-          Navigator.pushNamed(context, '/admin-settings');
+          // Navigate to Settings (Indstillinger)
+          Navigator.pushNamed(context, '/settings');
         }
       },
       itemBuilder: (context) => [

@@ -1,9 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
@@ -12,6 +15,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/ui/ska_button.dart';
 import '../widgets/ui/ska_card.dart';
+import '../widgets/theme_toggle.dart';
 import '../constants/roles_and_features.dart';
 import 'dropdown_settings_screen.dart';
 import 'admin_settings_screen.dart';
@@ -84,17 +88,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final jsonString = const JsonEncoder.withIndent('  ').convert(backupData);
       final fileName = 'ska-dan-backup-${DateTime.now().toIso8601String().split('T')[0]}-${DateTime.now().millisecondsSinceEpoch}.json';
 
-      // Get temp directory and write file
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/$fileName');
-      await file.writeAsString(jsonString);
+      if (kIsWeb) {
+        // Web: Direct download using blob
+        _downloadForWeb(jsonString, fileName);
+      } else {
+        // Mobile: Share via share_plus
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsString(jsonString);
 
-      // Share the file
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'SKA-DAN Backup',
-        text: 'Backup eksporteret ${DateTime.now().toString().split('.')[0]}',
-      );
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'SKA-DAN Backup',
+          text: 'Backup eksporteret ${DateTime.now().toString().split('.')[0]}',
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,6 +120,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } finally {
       setState(() => _isExporting = false);
+    }
+  }
+
+  // Web-specific download method
+  void _downloadForWeb(String content, String fileName) {
+    if (kIsWeb) {
+      final bytes = utf8.encode(content);
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      // Create anchor and trigger download
+      html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
     }
   }
 
@@ -289,6 +311,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text('Indstillinger'),
         elevation: 0,
+        actions: const [
+          ThemeToggle(size: ButtonSize.icon),
+          SizedBox(width: 16),
+        ],
       ),
       body: SingleChildScrollView(
         padding: AppSpacing.p6,
@@ -606,13 +632,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: SkaButton(
+                    child: _BackupImportButton(
+                      isImporting: _isImporting,
                       onPressed: _isImporting ? null : _importBackup,
-                      variant: ButtonVariant.outline,
-                      icon: _isImporting
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.upload),
-                      text: _isImporting ? 'Importerer...' : 'Vaelg backup fil',
                     ),
                   ),
                 ],
@@ -771,6 +793,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MaterialPageRoute(builder: (context) => const ActivityLogScreen()),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom backup import button with proper dark mode text color and hover state
+class _BackupImportButton extends StatefulWidget {
+  final bool isImporting;
+  final VoidCallback? onPressed;
+
+  const _BackupImportButton({
+    required this.isImporting,
+    this.onPressed,
+  });
+
+  @override
+  State<_BackupImportButton> createState() => _BackupImportButtonState();
+}
+
+class _BackupImportButtonState extends State<_BackupImportButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Normal state: black in dark mode, foreground in light mode
+    // Hover state: white in both modes (on darker hover background)
+    final textColor = _isHovered
+        ? Colors.white
+        : (AppColors.isDark ? Colors.black : AppColors.foreground);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: SkaButton(
+        onPressed: widget.onPressed,
+        variant: ButtonVariant.outline,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.isImporting)
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              Icon(Icons.upload, color: textColor),
+            const SizedBox(width: 8),
+            Text(
+              widget.isImporting ? 'Importerer...' : 'Vælg backup fil',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
