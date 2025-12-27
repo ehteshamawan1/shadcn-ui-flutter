@@ -1080,14 +1080,35 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   Widget _buildTabMenu() {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Calculate columns based on screen size - desktop has more columns for 2 rows
+    // Calculate columns and aspect ratio based on screen size
+    // More granular breakpoints for smooth responsive behavior
     int crossAxisCount;
-    if (screenWidth >= Breakpoints.lg) {
-      crossAxisCount = 7; // Desktop: 7 columns (13 tabs = 2 rows: 7 + 6)
-    } else if (screenWidth >= Breakpoints.md) {
-      crossAxisCount = 4; // Tablet: 4 columns
+    double aspectRatio;
+
+    if (screenWidth >= 1600) {
+      // Large desktop: 7 columns (13 tabs = 2 rows: 7 + 6)
+      crossAxisCount = 7;
+      aspectRatio = 7.5;
+    } else if (screenWidth >= 1280) {
+      // Medium desktop: 6 columns (13 tabs = 3 rows: 6 + 6 + 1)
+      crossAxisCount = 6;
+      aspectRatio = 6.5;
+    } else if (screenWidth >= 1024) {
+      // Small desktop: 5 columns (13 tabs = 3 rows: 5 + 5 + 3)
+      crossAxisCount = 5;
+      aspectRatio = 5.5;
+    } else if (screenWidth >= 768) {
+      // Tablet: 4 columns
+      crossAxisCount = 4;
+      aspectRatio = 4.5;
+    } else if (screenWidth >= 480) {
+      // Large mobile: 3 columns
+      crossAxisCount = 3;
+      aspectRatio = 3.8;
     } else {
-      crossAxisCount = 2; // Mobile: 2 columns (matching React)
+      // Small mobile: 2 columns (matching React)
+      crossAxisCount = 2;
+      aspectRatio = 4.5;
     }
 
     return Container(
@@ -1103,7 +1124,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         physics: const NeverScrollableScrollPhysics(), // Tabs don't scroll separately
         crossAxisSpacing: 4.0,
         mainAxisSpacing: 4.0,
-        childAspectRatio: screenWidth >= Breakpoints.lg ? 7.5 : 4.5, // Adjusted for larger text
+        childAspectRatio: aspectRatio,
         children: _visibleTabs.map(_buildTabChip).toList(),
       ),
     );
