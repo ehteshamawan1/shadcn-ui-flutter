@@ -528,71 +528,144 @@ class _SagerScreenState extends State<SagerScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.s2),
-              Align(
-                alignment: Alignment.centerRight,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      if (_isSelectionMode) ...[
-                        SkaButton(
-                          variant: ButtonVariant.ghost,
-                          size: ButtonSize.icon,
-                          icon: Icon(
-                            _selectedSagerIds.length == _filteredSager.length ? Icons.deselect : Icons.select_all,
-                            size: 18,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 600;
+
+                  // On narrow screens, split into two rows
+                  // Row 1: Controls (Sync, Settings, Theme, Export, Attention)
+                  // Row 2: Vis Arkiverede + Ny Sag
+                  // On wide screens, keep everything in one row
+                  if (isNarrow && !_isSelectionMode) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // First row: Control buttons
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildSyncStatus(),
+                              const SizedBox(width: AppSpacing.s2),
+                              if (isAdmin && _attentionCount > 0) ...[
+                                _buildAttentionFilterButton(),
+                                const SizedBox(width: AppSpacing.s2),
+                              ],
+                              const SettingsDropdown(),
+                              const SizedBox(width: AppSpacing.s2),
+                              const ThemeToggle(),
+                              if (isAdmin) ...[
+                                const SizedBox(width: AppSpacing.s2),
+                                SkaButton(
+                                  variant: ButtonVariant.ghost,
+                                  size: ButtonSize.icon,
+                                  icon: const Icon(Icons.download, size: 18),
+                                  onPressed: _showExportMenu,
+                                ),
+                              ],
+                            ],
                           ),
-                          onPressed: _selectAll,
                         ),
-                        const SizedBox(width: AppSpacing.s2),
-                        SkaButton(
-                          variant: ButtonVariant.outline,
-                          size: ButtonSize.sm,
-                          icon: const Icon(Icons.send, size: 16),
-                          text: 'Eksporter',
-                          onPressed: _exportSelectedToEconomic,
-                        ),
-                      ] else ...[
-                        _buildSyncStatus(),
-                        const SizedBox(width: AppSpacing.s2),
-                        if (isAdmin && _attentionCount > 0) ...[
-                          _buildAttentionFilterButton(),
-                          const SizedBox(width: AppSpacing.s2),
-                        ],
-                        const SettingsDropdown(),
-                        const SizedBox(width: AppSpacing.s2),
-                        const ThemeToggle(),
-                        if (isAdmin) ...[
-                          const SizedBox(width: AppSpacing.s2),
-                          SkaButton(
-                            variant: ButtonVariant.ghost,
-                            size: ButtonSize.icon,
-                            icon: const Icon(Icons.download, size: 18),
-                            onPressed: _showExportMenu,
+                        const SizedBox(height: AppSpacing.s2),
+                        // Second row: Archive toggle + Ny Sag
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SkaButton(
+                                variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
+                                size: ButtonSize.sm,
+                                icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
+                                text: _showArchived
+                                    ? 'Vis Aktive ($activeCount)'
+                                    : 'Vis Arkiverede ($archivedCount)',
+                                onPressed: _toggleArchiveFilter,
+                              ),
+                              if (canCreateSager && !_showArchived) ...[
+                                const SizedBox(width: AppSpacing.s2),
+                                SkaButton(
+                                  icon: const Icon(Icons.add, size: 16),
+                                  text: 'Ny Sag',
+                                  onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
-                        const SizedBox(width: AppSpacing.s2),
-                        SkaButton(
-                          variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
-                          size: ButtonSize.sm,
-                          icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
-                          text: _showArchived
-                              ? 'Vis Aktive ($activeCount)'
-                              : 'Vis Arkiverede ($archivedCount)',
-                          onPressed: _toggleArchiveFilter,
                         ),
-                        if (canCreateSager && !_showArchived) ...[
-                          const SizedBox(width: AppSpacing.s2),
-                          SkaButton(
-                            icon: const Icon(Icons.add, size: 16),
-                            text: 'Ny Sag',
-                            onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
-                          ),
-                        ],
                       ],
-                    ],
-                  ),
-                ),
+                    );
+                  }
+
+                  // Wide screens or selection mode: Single row
+                  return Align(
+                    alignment: Alignment.centerRight,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (_isSelectionMode) ...[
+                            SkaButton(
+                              variant: ButtonVariant.ghost,
+                              size: ButtonSize.icon,
+                              icon: Icon(
+                                _selectedSagerIds.length == _filteredSager.length ? Icons.deselect : Icons.select_all,
+                                size: 18,
+                              ),
+                              onPressed: _selectAll,
+                            ),
+                            const SizedBox(width: AppSpacing.s2),
+                            SkaButton(
+                              variant: ButtonVariant.outline,
+                              size: ButtonSize.sm,
+                              icon: const Icon(Icons.send, size: 16),
+                              text: 'Eksporter',
+                              onPressed: _exportSelectedToEconomic,
+                            ),
+                          ] else ...[
+                            _buildSyncStatus(),
+                            const SizedBox(width: AppSpacing.s2),
+                            if (isAdmin && _attentionCount > 0) ...[
+                              _buildAttentionFilterButton(),
+                              const SizedBox(width: AppSpacing.s2),
+                            ],
+                            const SettingsDropdown(),
+                            const SizedBox(width: AppSpacing.s2),
+                            const ThemeToggle(),
+                            if (isAdmin) ...[
+                              const SizedBox(width: AppSpacing.s2),
+                              SkaButton(
+                                variant: ButtonVariant.ghost,
+                                size: ButtonSize.icon,
+                                icon: const Icon(Icons.download, size: 18),
+                                onPressed: _showExportMenu,
+                              ),
+                            ],
+                            const SizedBox(width: AppSpacing.s2),
+                            SkaButton(
+                              variant: _showArchived ? ButtonVariant.primary : ButtonVariant.outline,
+                              size: ButtonSize.sm,
+                              icon: Icon(_showArchived ? Icons.unarchive : Icons.archive, size: 16),
+                              text: _showArchived
+                                  ? 'Vis Aktive ($activeCount)'
+                                  : 'Vis Arkiverede ($archivedCount)',
+                              onPressed: _toggleArchiveFilter,
+                            ),
+                            if (canCreateSager && !_showArchived) ...[
+                              const SizedBox(width: AppSpacing.s2),
+                              SkaButton(
+                                icon: const Icon(Icons.add, size: 16),
+                                text: 'Ny Sag',
+                                onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
