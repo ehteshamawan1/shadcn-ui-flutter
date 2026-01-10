@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/blok.dart';
 import '../models/equipment_log.dart';
+import '../models/kabel_slange_log.dart';
 import '../services/database_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -28,6 +29,7 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
   String _searchQuery = '';
   List<Blok> _blokke = [];
   List<EquipmentLog> _equipmentLogs = [];
+  List<KabelSlangeLog> _kabelSlangeLogs = [];
 
   @override
   void initState() {
@@ -48,13 +50,15 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
       _blokke = _dbService.getBlokkeBySag(widget.sagId);
       _equipmentLogs = _dbService.getEquipmentLogsBySag(widget.sagId);
       _equipmentLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      _kabelSlangeLogs = _dbService.getKabelSlangeLogsBySag(widget.sagId);
+      _kabelSlangeLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     });
   }
 
   int get _activeBlokke => _blokke.where((blok) => blok.slutDato == null).length;
 
   int get _activeEquipment =>
-      _equipmentLogs.where((log) => log.action.toLowerCase() == 'opsAÝt').length;
+      _equipmentLogs.where((log) => log.action.toLowerCase() == 'opsat').length;
 
   int get _inactiveEquipment =>
       _equipmentLogs.where((log) => log.action.toLowerCase() == 'nedtag').length;
@@ -75,6 +79,17 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
     }).toList();
   }
 
+  List<KabelSlangeLog> get _filteredKabelSlange {
+    if (_searchQuery.isEmpty) return _kabelSlangeLogs;
+    final query = _searchQuery.toLowerCase();
+    return _kabelSlangeLogs.where((log) {
+      final category = log.category.toLowerCase();
+      final type = log.type.toLowerCase();
+      final customType = log.customType?.toLowerCase() ?? '';
+      return category.contains(query) || type.contains(query) || customType.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -88,7 +103,7 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
             children: [
               const SkaCardHeader(
                 title: 'Samlet overblik',
-                description: 'Status for blokke og udstyr pa denne sag.',
+                description: 'Status for blokke og udstyr på denne sag.',
               ),
               SkaCardContent(
                 child: ResponsiveGrid(
@@ -110,7 +125,7 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
         ),
         const SizedBox(height: AppSpacing.s4),
         SkaInput(
-          placeholder: 'Soeg i blokke og udstyr...',
+          placeholder: 'Søg i blokke og udstyr...',
           controller: _searchController,
           prefixIcon: const Icon(Icons.search),
           onChanged: (value) {
@@ -202,6 +217,48 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.s4),
+        SkaCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SkaCardHeader(
+                title: 'Kabler og slanger',
+                description: '${_filteredKabelSlange.length} registreringer',
+              ),
+              SkaCardContent(
+                child: _filteredKabelSlange.isEmpty
+                    ? Text('Ingen kabler eller slanger registreret', style: AppTypography.sm)
+                    : Column(
+                        children: _filteredKabelSlange
+                            .map(
+                              (log) => Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _displayKabelSlangeType(log),
+                                        style: AppTypography.smSemibold,
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatKabelSlangeValue(log),
+                                      style: AppTypography.xs.copyWith(
+                                        color: AppColors.mutedForeground,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.s4), // Bottom padding
       ],
       ),
@@ -234,6 +291,22 @@ class _SamletOverblikWidgetState extends State<SamletOverblikWidget> {
     } catch (_) {
       return timestamp;
     }
+  }
+
+  String _displayKabelSlangeType(KabelSlangeLog log) {
+    if (log.type == 'Andet' && log.customType != null && log.customType!.isNotEmpty) {
+      return log.customType!;
+    }
+    return log.type;
+  }
+
+  String _formatKabelSlangeValue(KabelSlangeLog log) {
+    if (log.category == 'slanger') {
+      final meters = log.meters?.toStringAsFixed(1) ?? '0';
+      return '$meters m';
+    }
+    final quantity = log.quantity?.toString() ?? '0';
+    return '$quantity stk';
   }
 
   @override

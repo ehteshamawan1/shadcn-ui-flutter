@@ -153,7 +153,7 @@ class _DropdownSettingsScreenState extends State<DropdownSettingsScreen> {
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.s3),
             child: SkaButton(
-              text: 'Tilfoej',
+              text: 'Tilføj',
               size: ButtonSize.sm,
               onPressed: _selectedCategory == null ? null : _addNewOption,
             ),
@@ -307,7 +307,7 @@ class _AddEditOptionDialogState extends State<_AddEditOptionDialog> {
     final isEditing = widget.existingValue != null;
 
     return AlertDialog(
-      title: Text(isEditing ? 'Rediger valgmulighed' : 'Tilfoej ny valgmulighed'),
+      title: Text(isEditing ? 'Rediger valgmulighed' : 'Tilføj ny valgmulighed'),
       content: SizedBox(
         width: 400,
         child: Column(
@@ -320,7 +320,7 @@ class _AddEditOptionDialogState extends State<_AddEditOptionDialog> {
             ),
             const SizedBox(height: AppSpacing.s4),
             SkaInput(
-              label: 'Vaerdi *',
+              label: 'Værdi *',
               placeholder: 'Intern vaerdi (bruges i koden)',
               controller: _valueController,
               enabled: !isEditing,
@@ -349,7 +349,7 @@ class _AddEditOptionDialogState extends State<_AddEditOptionDialog> {
           onPressed: () {
             if (_valueController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Vaerdi er paakraevet')),
+                const SnackBar(content: Text('Værdi er påkrævet')),
               );
               return;
             }
@@ -361,7 +361,7 @@ class _AddEditOptionDialogState extends State<_AddEditOptionDialog> {
             });
           },
           variant: ButtonVariant.primary,
-          text: isEditing ? 'Gem' : 'Tilfoej',
+          text: isEditing ? 'Gem' : 'Tilføj',
         ),
       ],
     );

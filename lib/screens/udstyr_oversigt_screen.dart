@@ -66,7 +66,7 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Slet udstyr'),
-        content: const Text('Er du sikker paa, at du vil slette dette udstyr?'),
+        content: const Text('Er du sikker på, at du vil slette dette udstyr?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -125,7 +125,7 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEdit ? 'Rediger udstyr' : 'Tilfoej udstyr'),
+          title: Text(isEdit ? 'Rediger udstyr' : 'Tilføj udstyr'),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -219,14 +219,14 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
                     _loadAffugtere();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isEdit ? 'Udstyr opdateret' : 'Udstyr tilfoejet'),
+                        content: Text(isEdit ? 'Udstyr opdateret' : 'Udstyr tilføjet'),
                       ),
                     );
                   }
                 }
               },
               variant: ButtonVariant.primary,
-              text: isEdit ? 'Opdater' : 'Tilfoej',
+              text: isEdit ? 'Opdater' : 'Tilføj',
             ),
           ],
         ),
@@ -363,7 +363,7 @@ class _UdstyrsOversigtScreenState extends State<UdstyrsOversigtScreen> {
                         const SizedBox(height: 16),
                         const Text('Ingen udstyr fundet', style: TextStyle(fontSize: 18)),
                         const SizedBox(height: 8),
-                        const Text('Klik paa + for at tilfoeje udstyr'),
+                        const Text('Klik på + for at tilføje udstyr'),
                       ],
                     ),
                   )

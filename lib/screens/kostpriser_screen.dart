@@ -83,7 +83,7 @@ class _KostpriserScreenState extends State<KostpriserScreen> with SingleTickerPr
             const SizedBox(height: 16),
             SkaInput(
               label: 'Salgspris (DKK)',
-              helper: 'Standard salgspris paa fakturaer',
+              helper: 'Standard salgspris på fakturaer',
               controller: salgsprisController,
               keyboardType: TextInputType.number,
               prefixIcon: const Icon(Icons.receipt),

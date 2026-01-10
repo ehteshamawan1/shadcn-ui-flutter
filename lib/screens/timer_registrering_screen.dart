@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/timer_log.dart';
+import '../models/kostpris.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_colors.dart';
@@ -31,6 +32,7 @@ class _TimerRegistreringScreenState extends State<TimerRegistreringScreen> {
   bool _isBillable = true;
   DateTime _selectedDate = DateTime.now();
   late List<TimerLog> _timerLogs;
+  double _currentRate = 545;
 
   final List<String> _workTypes = [
     'Opsætning',
@@ -46,7 +48,17 @@ class _TimerRegistreringScreenState extends State<TimerRegistreringScreen> {
   void initState() {
     super.initState();
     _selectedWorkType = _workTypes.first;
+    _updateRate();
     _loadTimerLogs();
+  }
+
+  void _updateRate() {
+    final category = _categoryForWorkType(_selectedWorkType);
+    final rate = _dbService.getSalesPrice(widget.sagId ?? '', category);
+    setState(() {
+      _currentRate = rate;
+      _rateController.text = rate.toStringAsFixed(0);
+    });
   }
 
   void _loadTimerLogs() {
@@ -92,7 +104,7 @@ class _TimerRegistreringScreenState extends State<TimerRegistreringScreen> {
         date: _selectedDate.toIso8601String().split('T').first,
         type: _selectedWorkType,
         hours: hours,
-        rate: 545,
+        rate: _currentRate,
         billable: _isBillable,
         note: _notesController.text.isNotEmpty ? _notesController.text : null,
         user: _authService.currentUser?.id ?? 'unknown',
@@ -201,7 +213,7 @@ class _TimerRegistreringScreenState extends State<TimerRegistreringScreen> {
                           const SizedBox(height: AppSpacing.s4),
                           SkaInput(
                             label: 'Noter',
-                            placeholder: 'Tilfoej noter til denne arbejdssession...',
+                            placeholder: 'Tilføj noter til denne arbejdssession...',
                             controller: _notesController,
                             maxLines: 3,
                             minLines: 2,
@@ -249,8 +261,32 @@ class _TimerRegistreringScreenState extends State<TimerRegistreringScreen> {
           .toList(),
       onChanged: (value) {
         setState(() => _selectedWorkType = value ?? _workTypes.first);
+        _updateRate();
       },
     );
+  }
+
+  String _categoryForWorkType(String workType) {
+    final normalized = workType.toLowerCase();
+    if (normalized.contains('opsæt') || normalized.contains('opsaet')) {
+      return PriceCategory.laborOpsaetning;
+    }
+    if (normalized.contains('nedtag')) {
+      return PriceCategory.laborNedtagning;
+    }
+    if (normalized.contains('tilsyn')) {
+      return PriceCategory.laborTilsyn;
+    }
+    if (normalized.contains('måling') || normalized.contains('maaling')) {
+      return PriceCategory.laborMaalinger;
+    }
+    if (normalized.contains('skimmel')) {
+      return PriceCategory.laborSkimmel;
+    }
+    if (normalized.contains('dræn') || normalized.contains('draen')) {
+      return PriceCategory.laborBoring;
+    }
+    return PriceCategory.laborAndet;
   }
 
   Widget _buildDatePicker() {

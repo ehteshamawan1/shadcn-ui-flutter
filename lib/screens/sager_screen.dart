@@ -59,8 +59,8 @@ class _SagerScreenState extends State<SagerScreen> {
   StreamSubscription? _syncSubscription;
   VoidCallback? _notificationUnsubscribe;
 
-  final List<String> _typeOptions = ['alle', 'udtA,rring', 'varme', 'begge'];
-  final List<String> _regionOptions = ['alle', 'sjAÝlland', 'fyn', 'jylland'];
+  final List<String> _typeOptions = ['alle', 'udtørring', 'varme', 'begge'];
+  final List<String> _regionOptions = ['alle', 'sjælland', 'fyn', 'jylland'];
 
   @override
   void initState() {
@@ -140,7 +140,7 @@ class _SagerScreenState extends State<SagerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Synkronisering gennemfA,rt'),
+            content: Text('Synkronisering gennemført'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -223,8 +223,33 @@ class _SagerScreenState extends State<SagerScreen> {
     });
   }
 
-  String _normalizeType(String? value) => value?.toLowerCase().trim() ?? '';
-  String _normalizeRegion(String? value) => value?.toLowerCase().trim() ?? '';
+  String _normalizeDanish(String? value) {
+    final normalized = (value ?? '').toLowerCase().trim();
+    if (normalized.isEmpty) return '';
+    return normalized
+        .replaceAll('a,', 'ø')
+        .replaceAll('aý', 'æ')
+        .replaceAll('a?', 'å')
+        .replaceAll('ae', 'æ')
+        .replaceAll('oe', 'ø')
+        .replaceAll('aa', 'å');
+  }
+
+  String _normalizeType(String? value) {
+    final normalized = _normalizeDanish(value);
+    if (normalized.contains('udtørring')) return 'udtørring';
+    if (normalized == 'varme') return 'varme';
+    if (normalized == 'begge') return 'begge';
+    return normalized;
+  }
+
+  String _normalizeRegion(String? value) {
+    final normalized = _normalizeDanish(value);
+    if (normalized.contains('sjælland')) return 'sjælland';
+    if (normalized == 'fyn') return 'fyn';
+    if (normalized == 'jylland') return 'jylland';
+    return normalized;
+  }
 
   void _toggleArchiveFilter() {
     setState(() {
@@ -260,6 +285,18 @@ class _SagerScreenState extends State<SagerScreen> {
         _selectedSagerIds.addAll(_filteredSager.map((s) => s.id));
       }
     });
+  }
+
+  Future<void> _createSagAndOpen() async {
+    final result = await Navigator.of(context).pushNamed('/sager/ny');
+    if (result is Sag) {
+      _loadSager();
+      if (!mounted) return;
+      await Navigator.of(context).pushNamed('/sager/${result.id}');
+      _loadSager();
+    } else if (result == true) {
+      _loadSager();
+    }
   }
 
   Future<void> _exportToCSV({bool activeOnly = true}) async {
@@ -298,7 +335,7 @@ class _SagerScreenState extends State<SagerScreen> {
     if (_selectedSagerIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('VAÝlg mindst Acn sag at eksportere'),
+          content: Text('Vælg mindst én sag at eksportere'),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -308,7 +345,7 @@ class _SagerScreenState extends State<SagerScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Economic-eksport kommer i nAÝste version'),
+          content: Text('e-conomic-eksport kommer i næste version'),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -341,7 +378,7 @@ class _SagerScreenState extends State<SagerScreen> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.check_circle),
-              title: const Text('VAÝlg sager til e-conomic eksport'),
+              title: const Text('Vælg sager til e-conomic eksport'),
               onTap: () {
                 Navigator.pop(context);
                 _toggleSelectionMode();
@@ -434,17 +471,10 @@ class _SagerScreenState extends State<SagerScreen> {
       floatingActionButton: _isSelectionMode
           ? null
           : FloatingActionButton.extended(
-              onPressed: _syncService.isInitialSyncComplete
-                  ? () async {
-                      final result = await Navigator.of(context).pushNamed('/sager/ny');
-                      if (result == true) {
-                        _loadSager();
-                      }
-                    }
-                  : null,
+              onPressed: _syncService.isInitialSyncComplete ? _createSagAndOpen : null,
               tooltip: _syncService.isInitialSyncComplete
                   ? 'Opret ny sag'
-                  : 'Venter pA synkronisering...',
+                  : 'Venter på synkronisering...',
               icon: const Icon(Icons.note_add),
               label: Text(_syncService.isInitialSyncComplete ? 'Ny Sag' : 'Synkroniserer...'),
               backgroundColor: _syncService.isInitialSyncComplete ? AppColors.primary : AppColors.gray400,
@@ -458,6 +488,7 @@ class _SagerScreenState extends State<SagerScreen> {
     required int activeCount,
     required int archivedCount,
   }) {
+    final isCompact = MediaQuery.of(context).size.width < 600;
     final titleText = _isSelectionMode
         ? '${_selectedSagerIds.length} valgt'
         : 'Sager';
@@ -476,7 +507,10 @@ class _SagerScreenState extends State<SagerScreen> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: AppSpacing.symmetric(horizontal: AppSpacing.s4, vertical: AppSpacing.s3),
+          padding: AppSpacing.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: isCompact ? AppSpacing.s2 : AppSpacing.s3,
+          ),
           child: Column(
             children: [
               Row(
@@ -527,7 +561,7 @@ class _SagerScreenState extends State<SagerScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.s2),
+              SizedBox(height: isCompact ? AppSpacing.s1 : AppSpacing.s2),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isNarrow = constraints.maxWidth < 600;
@@ -588,7 +622,7 @@ class _SagerScreenState extends State<SagerScreen> {
                                 SkaButton(
                                   icon: const Icon(Icons.add, size: 16),
                                   text: 'Ny Sag',
-                                  onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                                  onPressed: _createSagAndOpen,
                                 ),
                               ],
                             ],
@@ -657,7 +691,7 @@ class _SagerScreenState extends State<SagerScreen> {
                               SkaButton(
                                 icon: const Icon(Icons.add, size: 16),
                                 text: 'Ny Sag',
-                                onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                                onPressed: _createSagAndOpen,
                               ),
                             ],
                           ],
@@ -695,7 +729,7 @@ class _SagerScreenState extends State<SagerScreen> {
         if (_pendingChanges > 0) ...[
           const SizedBox(width: 8),
           SkaBadge(
-            text: '$_pendingChanges AÝndringer',
+        text: '$_pendingChanges ændringer',
             variant: BadgeVariant.outline,
             small: true,
           ),
@@ -813,7 +847,7 @@ class _SagerScreenState extends State<SagerScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SkaSearchInput(
-          placeholder: 'SA,g efter sagsnr, adresse, byggeleder...',
+          placeholder: 'Søg efter sagsnr, adresse, byggeleder...',
           controller: _searchController,
           onChanged: (value) {
             _searchQuery = value;
@@ -932,16 +966,27 @@ class _SagerScreenState extends State<SagerScreen> {
   String _formatOptionLabel(String value) {
     if (value == 'alle') return 'Alle';
     if (value.isEmpty) return 'Ukendt';
-    return value[0].toUpperCase() + value.substring(1);
+    switch (value) {
+      case 'udtørring':
+        return 'Udtørring';
+      case 'sjælland':
+        return 'Sjælland';
+      case 'jylland':
+        return 'Jylland';
+      case 'fyn':
+        return 'Fyn';
+      default:
+        return value[0].toUpperCase() + value.substring(1);
+    }
   }
 
   Map<String, int> _buildStats(List<Sag> sager, Set<String> attentionIds) {
     return {
       'total': sager.length,
-      'udtA,rring': sager.where((s) => _normalizeType(s.sagType) == 'udtA,rring').length,
+      'udtørring': sager.where((s) => _normalizeType(s.sagType) == 'udtørring').length,
       'varme': sager.where((s) => _normalizeType(s.sagType) == 'varme').length,
       'begge': sager.where((s) => _normalizeType(s.sagType) == 'begge').length,
-      'sjAÝlland': sager.where((s) => _normalizeRegion(s.region) == 'sjAÝlland').length,
+      'sjælland': sager.where((s) => _normalizeRegion(s.region) == 'sjælland').length,
       'fyn': sager.where((s) => _normalizeRegion(s.region) == 'fyn').length,
       'jylland': sager.where((s) => _normalizeRegion(s.region) == 'jylland').length,
       'needsAttention': sager.where((s) => attentionIds.contains(s.id)).length,
@@ -962,8 +1007,8 @@ class _SagerScreenState extends State<SagerScreen> {
 
     items.addAll([
       _buildStatCard(
-        label: 'UdtA,rring',
-        value: stats['udtA,rring']!,
+        label: 'Udtørring',
+        value: stats['udtørring']!,
         background: AppColors.blue50,
         foreground: AppColors.blue700,
         border: AppColors.blue200,
@@ -983,8 +1028,8 @@ class _SagerScreenState extends State<SagerScreen> {
         border: const Color(0xFFD8B4FE),
       ),
       _buildStatCard(
-        label: 'SjAÝlland',
-        value: stats['sjAÝlland']!,
+        label: 'Sjælland',
+        value: stats['sjælland']!,
         background: AppColors.successLight,
         foreground: AppColors.success,
         border: AppColors.success.withOpacity(0.3),
@@ -1086,8 +1131,8 @@ class _SagerScreenState extends State<SagerScreen> {
             const SizedBox(height: AppSpacing.s2),
             Text(
               _showArchived
-                  ? 'Arkiverede sager vises her nAr du arkiverer dem'
-                  : 'Opret din fA,rste sag for at komme i gang',
+                  ? 'Arkiverede sager vises her når du arkiverer dem'
+                  : 'Opret din første sag for at komme i gang',
               style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
               textAlign: TextAlign.center,
             ),
@@ -1095,8 +1140,8 @@ class _SagerScreenState extends State<SagerScreen> {
               const SizedBox(height: AppSpacing.s4),
               SkaButton(
                 icon: const Icon(Icons.add, size: 16),
-                text: 'Opret fA,rste sag',
-                onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                text: 'Opret første sag',
+                onPressed: _createSagAndOpen,
               ),
             ],
           ],
@@ -1570,7 +1615,7 @@ class _EconomicConfigDialogState extends State<_EconomicConfigDialog> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Dette felt er pAkrAÝvet';
+                  return 'Dette felt er påkrævet';
                 }
                 return null;
               },
@@ -1584,7 +1629,7 @@ class _EconomicConfigDialogState extends State<_EconomicConfigDialog> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Dette felt er pAkrAÝvet';
+                  return 'Dette felt er påkrævet';
                 }
                 return null;
               },
@@ -1606,7 +1651,7 @@ class _EconomicConfigDialogState extends State<_EconomicConfigDialog> {
               });
             }
           },
-          child: const Text('FortsAÝt'),
+          child: const Text('Fortsæt'),
         ),
       ],
     );

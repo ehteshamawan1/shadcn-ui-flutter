@@ -40,7 +40,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
     if (!isSupported && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('NFC er ikke tilgaengelig paa denne enhed'),
+          content: Text('NFC er ikke tilgængelig på denne enhed'),
           duration: Duration(seconds: 3),
         ),
       );
@@ -291,7 +291,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
 
                         if (writeToTag) {
                           setState(() {
-                            errorText = 'Hold telefonen paa NFC tagget nu...';
+                            errorText = 'Hold telefonen på NFC-tagget nu...';
                           });
 
                           final writeSuccess = await _nfcService.writeEquipmentToTag(
@@ -384,7 +384,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
               _searchAndShowDatabaseDetails(nfcData.id);
             },
             icon: const Icon(Icons.search),
-            label: const Text('Soeg i database'),
+            label: const Text('Søg i database'),
           ),
           if (widget.sagId != null)
             ElevatedButton(
@@ -562,7 +562,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                                       variant: ButtonVariant.primary,
                                       size: ButtonSize.lg,
                                       icon: const Icon(Icons.search),
-                                      text: 'Soeg udstyr',
+                                      text: 'Søg udstyr',
                                     ),
                                     const SizedBox(height: AppSpacing.s2),
                                     SkaButton(
@@ -589,7 +589,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                                       variant: ButtonVariant.primary,
                                       size: ButtonSize.lg,
                                       icon: const Icon(Icons.search),
-                                      text: 'Soeg udstyr',
+                                      text: 'Søg udstyr',
                                     ),
                                   ),
                                   const SizedBox(width: AppSpacing.s3),
@@ -646,7 +646,7 @@ class _NFCScannerScreenState extends State<NFCScannerScreen> {
                               children: [
                                 const CircularProgressIndicator(),
                                 const SizedBox(height: AppSpacing.s3),
-                                Text('Venter paa NFC-tag...', style: AppTypography.sm),
+                                Text('Venter på NFC-tag...', style: AppTypography.sm),
                                 const SizedBox(height: AppSpacing.s3),
                                 SkaButton(
                                   onPressed: () async {

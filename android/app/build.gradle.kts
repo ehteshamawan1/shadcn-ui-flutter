@@ -1,11 +1,23 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Firebase Google Services plugin
-    id("com.google.gms.google-services")
 }
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+        && !keystoreProperties.getProperty("storeFile").isNullOrBlank()
+        && !keystoreProperties.getProperty("keyAlias").isNullOrBlank()
+        && !keystoreProperties.getProperty("storePassword").isNullOrBlank()
+        && !keystoreProperties.getProperty("keyPassword").isNullOrBlank()
 
 android {
     namespace = "com.skadan.ska_dan_flutter"
@@ -38,11 +50,26 @@ android {
         multiDexEnabled = true
     }
 
+    if (hasReleaseKeystore) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

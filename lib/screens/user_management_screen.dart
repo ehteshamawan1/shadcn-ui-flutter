@@ -41,7 +41,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Tilfoej ny bruger'),
+        title: const Text('Tilføj ny bruger'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -87,7 +87,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             onPressed: () async {
               if (nameController.text.isEmpty || pinController.text.length != 4) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Navn og PIN (4 cifre) er paakraevet')),
+                  const SnackBar(content: Text('Navn og PIN (4 cifre) er påkrævet')),
                 );
                 return;
               }
@@ -113,12 +113,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 Navigator.pop(context);
                 _loadUsers();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Bruger tilfoejet')),
+                  const SnackBar(content: Text('Bruger tilføjet')),
                 );
               }
             },
             variant: ButtonVariant.primary,
-            text: 'Tilfoej',
+            text: 'Tilføj',
           ),
         ],
       ),
@@ -179,7 +179,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             onPressed: () async {
               if (nameController.text.isEmpty || pinController.text.length != 4) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Navn og PIN (4 cifre) er paakraevet')),
+                  const SnackBar(content: Text('Navn og PIN (4 cifre) er påkrævet')),
                 );
                 return;
               }

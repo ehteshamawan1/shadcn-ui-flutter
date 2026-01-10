@@ -34,13 +34,30 @@ class _NySagScreenState extends State<NySagScreen> {
   final _kundensSagsrefController = TextEditingController();
   final _beskrivrelseController = TextEditingController();
 
-  String _selectedSagType = 'udtA,rring';
-  String _selectedRegion = 'sjAÝlland';
+  String _selectedSagType = 'udtørring';
+  String _selectedRegion = 'sjælland';
   final bool _isActive = true;
   bool _isSaving = false;
 
-  final List<String> _sagTypes = ['udtA,rring', 'varme', 'begge'];
-  final List<String> _regions = ['sjAÝlland', 'fyn', 'jylland'];
+  final List<String> _sagTypes = ['udtørring', 'varme', 'begge'];
+  final List<String> _regions = ['sjælland', 'fyn', 'jylland'];
+
+  String? _regionFromPostnummer(String postnummer) {
+    final normalized = postnummer.trim();
+    if (normalized.isEmpty) return null;
+    final value = int.tryParse(normalized);
+    if (value == null) return null;
+    if (value >= 0 && value <= 4999) {
+      return 'sjælland';
+    }
+    if (value >= 5000 && value <= 5999) {
+      return 'fyn';
+    }
+    if (value >= 6000 && value <= 9999) {
+      return 'jylland';
+    }
+    return null;
+  }
 
   Future<void> _saveSag() async {
     if (!_formKey.currentState!.validate()) {
@@ -50,10 +67,13 @@ class _NySagScreenState extends State<NySagScreen> {
     setState(() => _isSaving = true);
 
     try {
+      final derivedRegion = _regionFromPostnummer(_postnrController.text);
       final sag = Sag(
         id: const Uuid().v4(),
         sagsnr: _sagsnrController.text.trim(),
         adresse: _adresseController.text.trim(),
+        postnummer: _postnrController.text.trim().isNotEmpty ? _postnrController.text.trim() : null,
+        by: _byController.text.trim().isNotEmpty ? _byController.text.trim() : null,
         byggeleder: _byggelederController.text.trim(),
         byggelederEmail: _byggelederEmailController.text.isNotEmpty
             ? _byggelederEmailController.text.trim()
@@ -68,7 +88,7 @@ class _NySagScreenState extends State<NySagScreen> {
         status: 'aktiv',
         aktiv: _isActive,
         sagType: _selectedSagType,
-        region: _selectedRegion,
+        region: derivedRegion ?? _selectedRegion,
         oprettetAf: _authService.currentUser?.name ?? 'unknown',
         oprettetDato: DateTime.now().toIso8601String(),
         opdateretDato: DateTime.now().toIso8601String(),
@@ -89,7 +109,7 @@ class _NySagScreenState extends State<NySagScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        Navigator.pop(context, sag);
       }
     } catch (e) {
       if (mounted) {
@@ -164,7 +184,7 @@ class _NySagScreenState extends State<NySagScreen> {
                         prefixIcon: const Icon(Icons.tag),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Sagsnummer er paakraevet';
+                            return 'Sagsnummer er påkrævet';
                           }
                           return null;
                         },
@@ -175,7 +195,7 @@ class _NySagScreenState extends State<NySagScreen> {
                         value: _selectedSagType,
                         items: _sagTypes,
                         onChanged: (value) {
-                          setState(() => _selectedSagType = value ?? 'udtA,rring');
+                          setState(() => _selectedSagType = value ?? 'udtørring');
                         },
                       ),
                     ],
@@ -194,7 +214,7 @@ class _NySagScreenState extends State<NySagScreen> {
                         prefixIcon: const Icon(Icons.home_outlined),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Adresse er paakraevet';
+                            return 'Adresse er påkrævet';
                           }
                           return null;
                         },
@@ -212,6 +232,12 @@ class _NySagScreenState extends State<NySagScreen> {
                             placeholder: '0000',
                             controller: _postnrController,
                             keyboardType: TextInputType.number,
+                            onChanged: (value) {
+                              final derived = _regionFromPostnummer(value);
+                              if (derived != null && derived != _selectedRegion) {
+                                setState(() => _selectedRegion = derived);
+                              }
+                            },
                             prefixIcon: const Icon(Icons.mail_outline),
                           ),
                           SkaInput(
@@ -233,12 +259,12 @@ class _NySagScreenState extends State<NySagScreen> {
                     children: [
                       SkaInput(
                         label: 'Byggeleder *',
-                        placeholder: 'Navn paa byggeleder',
+                        placeholder: 'Navn på byggeleder',
                         controller: _byggelederController,
                         prefixIcon: const Icon(Icons.person_outline),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Byggeleder er paakraevet';
+                            return 'Byggeleder er påkrævet';
                           }
                           return null;
                         },
@@ -278,7 +304,7 @@ class _NySagScreenState extends State<NySagScreen> {
                     children: [
                       SkaInput(
                         label: 'Bygherre',
-                        placeholder: 'Navn paa bygherre/selskab',
+                        placeholder: 'Navn på bygherre/selskab',
                         controller: _bygherreController,
                         prefixIcon: const Icon(Icons.apartment_outlined),
                       ),
@@ -320,13 +346,13 @@ class _NySagScreenState extends State<NySagScreen> {
                         value: _selectedRegion,
                         items: _regions,
                         onChanged: (value) {
-                          setState(() => _selectedRegion = value ?? 'sjAÝlland');
+                          setState(() => _selectedRegion = value ?? 'sjælland');
                         },
                       ),
                       const SizedBox(height: AppSpacing.s4),
                       SkaInput(
                         label: 'Beskrivelse',
-                        placeholder: 'Beskriv sagen og eventuelle saerlige forhold...',
+                        placeholder: 'Beskriv sagen og eventuelle særlige forhold...',
                         controller: _beskrivrelseController,
                         prefixIcon: const Icon(Icons.description_outlined),
                         maxLines: 4,
@@ -422,12 +448,16 @@ class _NySagScreenState extends State<NySagScreen> {
 
   String _formatLabel(String value) {
     switch (value) {
-      case 'udtA,rring':
-        return 'Udtorring';
-      case 'sjAÝlland':
-        return 'Sjaelland';
+      case 'udtørring':
+        return 'Udtørring';
+      case 'sjælland':
+        return 'Sjælland';
+      case 'jylland':
+        return 'Jylland';
+      case 'fyn':
+        return 'Fyn';
       default:
-        return value[0].toUpperCase() + value.substring(1);
+        return value.isNotEmpty ? value[0].toUpperCase() + value.substring(1) : value;
     }
   }
 

@@ -65,7 +65,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final alleAffugtere = _databaseService.getAllAffugtere();
 
       setState(() {
-        _aktiveSager = alleSager.where((sag) => sag.aktiv).toList();
+        final aktive = alleSager.where((sag) => sag.aktiv).toList();
+        aktive.sort((a, b) {
+          final aDate = a.opdateretDato.isNotEmpty ? a.opdateretDato : (a.updatedAt ?? '');
+          final bDate = b.opdateretDato.isNotEmpty ? b.opdateretDato : (b.updatedAt ?? '');
+          return bDate.compareTo(aDate);
+        });
+        _aktiveSager = aktive;
         _alleAffugtere = alleAffugtere;
       });
     } catch (error) {
@@ -167,6 +173,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       },
     );
+  }
+
+  Future<void> _createSagAndOpen() async {
+    final result = await Navigator.of(context).pushNamed('/sager/ny');
+    if (result is Sag) {
+      await _loadDashboardData();
+      if (!mounted) return;
+      await Navigator.of(context).pushNamed('/sager/${result.id}');
+      await _loadDashboardData();
+    } else if (result == true) {
+      await _loadDashboardData();
+    }
   }
 
   Future<void> _showEquipmentLookupResult(NFCData nfcData) async {
@@ -349,6 +367,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHeader(Sag? currentSag) {
     final userName = _currentUser?.name ?? '';
     final role = _currentUser?.role ?? '';
+    final isCompact = MediaQuery.of(context).size.width < 600;
 
     return Container(
       decoration: BoxDecoration(
@@ -361,7 +380,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: AppSpacing.symmetric(horizontal: AppSpacing.s4, vertical: AppSpacing.s3),
+          padding: AppSpacing.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: isCompact ? AppSpacing.s2 : AppSpacing.s3,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -370,7 +392,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Image.asset(
                       'assets/images/logo.png',
-                      height: 40,
+                      height: isCompact ? 32 : 40,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 4),
@@ -577,7 +599,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 size: ButtonSize.sm,
                 icon: const Icon(Icons.add, size: 16),
                 text: 'Ny sag',
-                onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                onPressed: _createSagAndOpen,
               ),
             ),
           ),
@@ -636,7 +658,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: SkaButton(
                 icon: const Icon(Icons.add, size: 16),
                 text: 'Opret første sag',
-                onPressed: () => Navigator.pushNamed(context, '/sager/ny'),
+                onPressed: _createSagAndOpen,
               ),
             ),
           ),

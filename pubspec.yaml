@@ -14,7 +14,7 @@ publish_to: 'none'
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+7
 
 environment:
   sdk: ^3.9.2
@@ -40,20 +40,20 @@ dependencies:
   nfc_manager: ^3.5.0
 
   # Backend (Supabase)
-  supabase_flutter: ^2.10.0
+  supabase_flutter: ^2.12.0
 
   # UI
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.2.1
-  flutter_svg: ^2.0.10
+  google_fonts: ^7.0.0
+  flutter_svg: ^2.2.3
 
   # Utilities
-  intl: ^0.19.0
+  intl: ^0.20.2
   uuid: ^4.5.1
   path_provider: ^2.1.4
-  shared_preferences: ^2.3.3
+  shared_preferences: ^2.5.4
   url_launcher: ^6.3.1
-  share_plus: ^10.0.2
+  share_plus: ^12.0.1
   speech_to_text: ^7.3.0
   universal_html: ^2.2.4
 
@@ -68,21 +68,21 @@ dependencies:
   csv: ^6.0.0
 
   # Network
-  connectivity_plus: ^6.1.0
+  connectivity_plus: ^7.0.0
   http: ^1.1.0
 
   # Notifications
-  flutter_local_notifications: ^18.0.1
-  file_picker: ^10.3.7
+  flutter_local_notifications: ^19.5.0
+  file_picker: ^10.3.8
 
   # Firebase (Push Notifications)
-  firebase_core: ^3.8.1
-  firebase_messaging: ^15.2.1
+  firebase_core: ^4.3.0
+  firebase_messaging: ^16.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   hive_generator: ^2.0.1
   build_runner: ^2.4.13
 

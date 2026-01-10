@@ -249,7 +249,7 @@ class NotificationManager {
   }
 
   String _generateEquipmentMessage(String type, Map<String, dynamic> details) {
-    final action = type == 'equipment_added' ? 'tilfA,jet' : 'nedtaget';
+    final action = type == 'equipment_added' ? 'tilføjet' : 'nedtaget';
     final quantity = details['quantity'] ?? 1;
     final category = details['category'] ?? '';
     final equipmentType = details['type'] ?? '';
@@ -282,7 +282,7 @@ class NotificationManager {
       return 'Ny blok "$navn" oprettet';
     }
     if (action == 'completed') {
-      return 'Blok "$navn" markeret som fAÝrdig';
+      return 'Blok "$navn" markeret som færdig';
     }
     if (action == 'updated') {
       return 'Blok "$navn" opdateret';

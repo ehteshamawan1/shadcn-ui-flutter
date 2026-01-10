@@ -183,7 +183,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                                   obscureText: true,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Dette felt er paakraevet';
+                                      return 'Dette felt er påkrævet';
                                     }
                                     return null;
                                   },
@@ -197,7 +197,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                                   obscureText: true,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Dette felt er paakraevet';
+                                      return 'Dette felt er påkrævet';
                                     }
                                     return null;
                                   },

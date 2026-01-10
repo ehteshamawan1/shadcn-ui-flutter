@@ -163,6 +163,9 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
       totalHours: totalHours,
       billablePercentage: billablePercentage,
       avgHourlyRate: avgHourlyRate,
+      avgLaborCostPerHour: avgLaborCostPerHour,
+      equipmentDriftPercent: equipmentDriftRate * 100,
+      overheadPercent: overheadRate * 100,
     );
   }
 
@@ -258,7 +261,9 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
                 Expanded(
                   child: Text(
                     'Rentabiliteten beregnes på timer, udstyr og færdigmeldte boliger fra blokke. '
-                    'Omkostninger inkluderer løn (400 DKK/time), udstyrsdrift (30%) og overhead (15%).',
+                    'Omkostninger bruger kostpriser: løn (${_formatCurrency(r.avgLaborCostPerHour)}/time), '
+                    'udstyrsdrift (${r.equipmentDriftPercent.toStringAsFixed(0)}%) og overhead '
+                    '(${r.overheadPercent.toStringAsFixed(0)}%).',
                     style: AppTypography.xs.copyWith(color: AppColors.blue700),
                   ),
                 ),
@@ -330,15 +335,19 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
           const SizedBox(height: 16),
 
           // Costs breakdown
-          _buildSectionCard(
-            theme,
-            'Omkostninger',
-            Icons.money_off,
-            Colors.red,
-            [
-              _buildLineItem('Løn (alle timer):', _formatCurrency(r.laborCost)),
-              _buildLineItem('Udstyr drift:', _formatCurrency(r.equipmentCost)),
-              _buildLineItem('Overhead:', _formatCurrency(r.overheadCost)),
+            _buildSectionCard(
+              theme,
+              'Omkostninger',
+              Icons.money_off,
+              Colors.red,
+              [
+                _buildLineItem('Løn pr. time:', '${_formatCurrency(r.avgLaborCostPerHour)}/time'),
+                _buildLineItem('Udstyrsdrift:', '${r.equipmentDriftPercent.toStringAsFixed(0)}%'),
+                _buildLineItem('Overhead:', '${r.overheadPercent.toStringAsFixed(0)}%'),
+                const Divider(),
+                _buildLineItem('Løn (alle timer):', _formatCurrency(r.laborCost)),
+                _buildLineItem('Udstyr drift:', _formatCurrency(r.equipmentCost)),
+                _buildLineItem('Overhead:', _formatCurrency(r.overheadCost)),
               const Divider(),
               _buildLineItem('Total:', _formatCurrency(r.totalCosts), isBold: true),
             ],
@@ -596,7 +605,7 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text('Udstyr paa sagen', style: AppTypography.smSemibold),
+                    child: Text('Udstyr på sagen', style: AppTypography.smSemibold),
                   ),
                   ListView.builder(
                     shrinkWrap: true,
@@ -661,7 +670,7 @@ class _RentabilitetScreenState extends State<RentabilitetScreen> with SingleTick
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text('Blokke paa sagen', style: AppTypography.smSemibold),
+                    child: Text('Blokke på sagen', style: AppTypography.smSemibold),
                   ),
                   ListView.builder(
                     shrinkWrap: true,
@@ -738,6 +747,9 @@ class RentabilitetData {
   final double totalHours;
   final double billablePercentage;
   final double avgHourlyRate;
+  final double avgLaborCostPerHour;
+  final double equipmentDriftPercent;
+  final double overheadPercent;
 
   RentabilitetData({
     required this.registeredBillableHours,
@@ -755,5 +767,8 @@ class RentabilitetData {
     required this.totalHours,
     required this.billablePercentage,
     required this.avgHourlyRate,
+    required this.avgLaborCostPerHour,
+    required this.equipmentDriftPercent,
+    required this.overheadPercent,
   });
 }

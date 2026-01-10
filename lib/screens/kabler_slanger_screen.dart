@@ -21,14 +21,14 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
   String _categoryFilter = 'alle'; // 'alle', 'slanger', 'kabler'
 
   final List<String> _slangeTypes = [
-    'Varmtvandsslange ø32',
-    'Varmtvandsslange ø50',
-    'Flexslange ø127',
-    'Flexslange ø102',
-    'Flexslange ø152',
-    'Poseslange ø200',
-    'Poseslange ø250',
-    'Poseslange ø315',
+    'Varmtvandsslange Ø32',
+    'Varmtvandsslange Ø50',
+    'Flexslange Ø127',
+    'Flexslange Ø102',
+    'Flexslange Ø152',
+    'Poseslange Ø200',
+    'Poseslange Ø250',
+    'Poseslange Ø315',
     'Andet',
   ];
 
@@ -77,7 +77,7 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Slet registrering'),
-        content: const Text('Er du sikker på at du vil slette denne registrering?'),
+        content: const Text('Er du sikker på, at du vil slette denne registrering?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -116,7 +116,7 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Tilføj Kabel eller Slange'),
+          title: const Text('Tilføj kabel eller slange'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -429,7 +429,7 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
             // List
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + 72 + MediaQuery.of(context).padding.bottom),
                 itemCount: logs.length,
                 itemBuilder: (context, index) {
                   final log = logs[index];
@@ -521,7 +521,7 @@ class _KablerSlangerScreenState extends State<KablerSlangerScreen> {
         ),
         Positioned(
           right: 16,
-          bottom: 16,
+          bottom: 16 + MediaQuery.of(context).padding.bottom,
           child: FloatingActionButton(
             onPressed: _showAddDialog,
             child: const Icon(Icons.add),

@@ -303,27 +303,26 @@ class _ChipFilter extends StatelessWidget {
           ]
         : options;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: allOptions.map((opt) {
           final isSelected = value == opt.value;
           final countText = config.showCount && opt.count != null ? ' (${opt.count})' : '';
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text('${opt.label}$countText'),
-              selected: isSelected,
-              onSelected: (_) => onChanged(opt.value),
-              avatar: opt.icon != null
-                  ? Icon(opt.icon, size: 16, color: isSelected ? Colors.white : opt.color)
-                  : null,
-              backgroundColor: opt.color?.withValues(alpha: 0.1),
-              selectedColor: opt.color ?? Theme.of(context).colorScheme.primary,
-              labelStyle: AppTypography.xs.copyWith(
-                color: isSelected ? AppColors.primaryForeground : AppColors.foreground,
-              ),
+          return FilterChip(
+            label: Text('${opt.label}$countText'),
+            selected: isSelected,
+            onSelected: (_) => onChanged(opt.value),
+            avatar: opt.icon != null
+                ? Icon(opt.icon, size: 16, color: isSelected ? Colors.white : opt.color)
+                : null,
+            backgroundColor: opt.color?.withValues(alpha: 0.1),
+            selectedColor: opt.color ?? Theme.of(context).colorScheme.primary,
+            labelStyle: AppTypography.xs.copyWith(
+              color: isSelected ? AppColors.primaryForeground : AppColors.foreground,
             ),
           );
         }).toList(),

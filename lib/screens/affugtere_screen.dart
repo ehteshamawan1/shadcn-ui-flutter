@@ -202,6 +202,15 @@ class _AffugtereScreenState extends State<AffugtereScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/nfc-scanner'),
+                      icon: const Icon(Icons.nfc, size: 16),
+                      label: const Text('Scan NFC'),
+                    ),
+                  ),
                   const SizedBox(height: 20),
 
                   // Equipment details section

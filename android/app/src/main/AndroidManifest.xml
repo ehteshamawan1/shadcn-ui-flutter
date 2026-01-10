@@ -1,7 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- NFC Permission -->
     <uses-permission android:name="android.permission.NFC" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
 
     <!-- Storage permissions for backup functionality -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -17,7 +18,7 @@
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <application
-        android:label="ska_dan_flutter"
+        android:label="SKA-DAN App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">

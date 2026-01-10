@@ -291,7 +291,7 @@ class _BlokAdministrationScreenState extends State<BlokAdministrationScreen> {
                 ),
                 Positioned(
                   right: 16,
-                  bottom: 16,
+                  bottom: 16 + MediaQuery.of(context).padding.bottom,
                   child: FloatingActionButton(
                     onPressed: () => _showBlokDialog(),
                     child: const Icon(Icons.add),
@@ -313,7 +313,7 @@ class _BlokAdministrationScreenState extends State<BlokAdministrationScreen> {
             children: [
               Positioned.fill(
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + 72 + MediaQuery.of(context).padding.bottom),
                   itemCount: _blokke.length,
                   itemBuilder: (context, index) {
             final blok = _blokke[index];
@@ -371,7 +371,7 @@ class _BlokAdministrationScreenState extends State<BlokAdministrationScreen> {
               ),
               Positioned(
                 right: 16,
-                bottom: 16,
+                bottom: 16 + MediaQuery.of(context).padding.bottom,
                 child: FloatingActionButton(
                   onPressed: () => _showBlokDialog(),
                   child: const Icon(Icons.add),

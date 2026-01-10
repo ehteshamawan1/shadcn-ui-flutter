@@ -195,6 +195,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   Future<void> _saveSagChanges() async {
     final sag = _sag;
     if (sag == null) return;
+    final derivedRegion = _regionFromPostnummer(_postnummerController.text);
 
     final updated = Sag(
       id: sag.id,
@@ -230,7 +231,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       sagType: _sagTypeController.text.trim().isEmpty
           ? sag.sagType
           : _sagTypeController.text.trim(),
-      region: sag.region,
+      region: derivedRegion ?? sag.region,
       oprettetAf: sag.oprettetAf,
       oprettetDato: sag.oprettetDato,
       opdateretDato: DateTime.now().toIso8601String(),
@@ -291,6 +292,9 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       'Andet',
     ];
 
+    double currentRate = _dbService.getSalesPrice(widget.sagId, _categoryForWorkType(selectedType));
+    rateController.text = currentRate.toStringAsFixed(0);
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -340,7 +344,13 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   items: typeOptions.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                   onChanged: (value) {
-                    if (value != null) setDialogState(() => selectedType = value);
+                    if (value != null) {
+                      setDialogState(() {
+                        selectedType = value;
+                        currentRate = _dbService.getSalesPrice(widget.sagId, _categoryForWorkType(selectedType));
+                        rateController.text = currentRate.toStringAsFixed(0);
+                      });
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
@@ -362,10 +372,10 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                       child: TextFormField(
                         controller: rateController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Timesats (DKK)',
                           border: OutlineInputBorder(),
-                          helperText: 'Standard: 545 DKK/time',
+                          helperText: 'Standard: ${currentRate.toStringAsFixed(0)} DKK/time',
                         ),
                       ),
                     ),
@@ -596,7 +606,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     final beskrivelseController = TextEditingController(text: sag.beskrivelse);
 
     String selectedSagType = sag.sagType ?? 'udtørring';
-    String selectedRegion = sag.region ?? 'fyn';
+    String selectedRegion = _regionFromPostnummer(sag.postnummer ?? '') ?? sag.region ?? 'fyn';
 
     await showDialog(
       context: context,
@@ -806,12 +816,14 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                 padding: AppSpacing.p4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTabMenu(),
-                    const SizedBox(height: AppSpacing.s6),
-                    _buildTabContent(sag),
-                  ],
-                ),
+                    children: [
+                      _buildTabMenu(),
+                      const SizedBox(height: AppSpacing.s4),
+                      _buildContactInfoCard(sag),
+                      const SizedBox(height: AppSpacing.s6),
+                      _buildTabContent(sag),
+                    ],
+                  ),
               ),
             ),
           ),
@@ -821,6 +833,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
   }
 
   Widget _buildHeader(Sag sag, {required bool isAdmin}) {
+    final isCompact = MediaQuery.of(context).size.width < 600;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.background,
@@ -832,7 +845,10 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: AppSpacing.symmetric(horizontal: AppSpacing.s4, vertical: AppSpacing.s3),
+          padding: AppSpacing.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: isCompact ? AppSpacing.s2 : AppSpacing.s3,
+          ),
           child: ResponsiveBuilder(
             mobile: _buildHeaderMobile(sag, isAdmin: isAdmin),
             tablet: _buildHeaderDesktop(sag, isAdmin: isAdmin),
@@ -1053,7 +1069,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     required String value,
     required String uri,
   }) {
-    final displayValue = value.isNotEmpty ? value : 'Ikke tilgaengelig';
+    final displayValue = value.isNotEmpty ? value : 'Ikke tilgængelig';
     final isEnabled = uri.isNotEmpty;
     final color = isEnabled ? AppColors.primary : AppColors.mutedForeground;
 
@@ -1270,7 +1286,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Backup er tilgaengelig i indstillinger.',
+                    'Backup er tilgængelig i indstillinger.',
                     style: AppTypography.sm.copyWith(color: AppColors.mutedForeground),
                   ),
                   const SizedBox(height: AppSpacing.s3),
@@ -1298,7 +1314,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           children: [
             const SkaCardHeader(
               title: 'Administration',
-              description: 'Admin vaerktoejer til brugere og systemindstillinger.',
+              description: 'Admin værktøjer til brugere og systemindstillinger.',
             ),
             SkaCardContent(
               child: Wrap(
@@ -1332,23 +1348,151 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     final value = int.tryParse(normalized);
     if (value == null) return null;
     if (value >= 0 && value <= 4999) {
-      return 'Sjaelland';
+      return 'sjælland';
     }
     if (value >= 5000 && value <= 5999) {
-      return 'Fyn';
+      return 'fyn';
     }
     if (value >= 6000 && value <= 9999) {
-      return 'Jylland';
+      return 'jylland';
     }
     return null;
   }
 
   String? _resolveRegionLabel(Sag sag) {
     final derived = _regionFromPostnummer(_postnummerController.text);
-    if (derived != null) {
-      return derived;
+    final raw = derived ?? sag.region;
+    return _formatRegionLabel(raw);
+  }
+
+  String? _formatRegionLabel(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    switch (value.toLowerCase()) {
+      case 'sjælland':
+      case 'sjaelland':
+        return 'Sjælland';
+      case 'fyn':
+        return 'Fyn';
+      case 'jylland':
+        return 'Jylland';
+      default:
+        return value;
     }
-    return sag.region;
+  }
+
+  String _categoryForWorkType(String workType) {
+    final normalized = workType.toLowerCase();
+    if (normalized.contains('opsæt') || normalized.contains('opsaet')) {
+      return PriceCategory.laborOpsaetning;
+    }
+    if (normalized.contains('nedtag')) {
+      return PriceCategory.laborNedtagning;
+    }
+    if (normalized.contains('tilsyn')) {
+      return PriceCategory.laborTilsyn;
+    }
+    if (normalized.contains('måling') || normalized.contains('maaling')) {
+      return PriceCategory.laborMaalinger;
+    }
+    if (normalized.contains('skimmel')) {
+      return PriceCategory.laborSkimmel;
+    }
+    if (normalized.contains('dræn') || normalized.contains('draen')) {
+      return PriceCategory.laborBoring;
+    }
+    return PriceCategory.laborAndet;
+  }
+
+  Widget _buildContactInfoCard(Sag sag) {
+    final phone = sag.byggelederTlf ?? '';
+    final email = sag.byggelederEmail ?? '';
+    final phoneUri = phone.isNotEmpty ? 'tel:${phone.replaceAll(' ', '')}' : null;
+    final emailUri = email.isNotEmpty ? 'mailto:$email' : null;
+
+    return SkaCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SkaCardHeader(
+            title: 'Kontakt',
+            description: 'Byggeleder og bygherre',
+          ),
+          SkaCardContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildContactInfoRow(
+                  icon: Icons.business,
+                  label: 'Byggeleder',
+                  value: sag.byggeleder,
+                ),
+                if (sag.bygherre != null && sag.bygherre!.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.s2),
+                  _buildContactInfoRow(
+                    icon: Icons.person,
+                    label: 'Bygherre',
+                    value: sag.bygherre!,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.s2),
+                _buildContactInfoRow(
+                  icon: Icons.phone,
+                  label: 'Telefon',
+                  value: phone,
+                  uri: phoneUri,
+                ),
+                const SizedBox(height: AppSpacing.s2),
+                _buildContactInfoRow(
+                  icon: Icons.mail_outline,
+                  label: 'Email',
+                  value: email,
+                  uri: emailUri,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    String? uri,
+  }) {
+    final displayValue = value.isNotEmpty ? value : 'Ikke tilgængelig';
+    final isEnabled = uri != null && uri.isNotEmpty && value.isNotEmpty;
+
+    return InkWell(
+      onTap: isEnabled ? () => _launchUri(uri) : null,
+      borderRadius: AppRadius.radiusMd,
+      child: Padding(
+        padding: AppSpacing.symmetric(horizontal: AppSpacing.s2, vertical: AppSpacing.s1),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.s2),
+            Text(
+              '$label:',
+              style: AppTypography.smMedium.copyWith(color: AppColors.foreground),
+            ),
+            const SizedBox(width: AppSpacing.s2),
+            Expanded(
+              child: Text(
+                displayValue,
+                style: AppTypography.sm.copyWith(
+                  color: isEnabled ? AppColors.primary : AppColors.mutedForeground,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSagInfoCard(Sag sag) {
@@ -1378,7 +1522,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                     ),
                     SkaInput(
                       label: 'Sag Type *',
-                      placeholder: 'Udtorring',
+                      placeholder: 'Udtørring',
                       controller: _sagTypeController,
                       onChanged: (_) => _scheduleAutoSave(),
                     ),
@@ -1437,7 +1581,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                 const SizedBox(height: AppSpacing.s3),
                 SkaInput(
                   label: 'Byggeleder *',
-                  placeholder: 'Navn paa byggeleder',
+                  placeholder: 'Navn på byggeleder',
                   controller: _byggelederController,
                   onChanged: (_) => _scheduleAutoSave(),
                 ),
@@ -1482,7 +1626,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                   children: [
                     SkaInput(
                       label: 'Bygherre',
-                      placeholder: 'Navn paa bygherre/selskab',
+                      placeholder: 'Navn på bygherre/selskab',
                       controller: _bygherreController,
                       onChanged: (_) => _scheduleAutoSave(),
                     ),
@@ -2450,7 +2594,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                 border: Border.all(color: AppColors.borderLight),
               ),
               child: Text(
-                'Svar paa: ${parent.userName} - ${_truncateText(parent.text, 80)}',
+                'Svar på: ${parent.userName} - ${_truncateText(parent.text, 80)}',
                 style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
               ),
             ),
@@ -2561,7 +2705,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Tale-til-tekst er ikke understottet paa denne enhed.'),
+              content: Text('Tale-til-tekst er ikke understøttet på denne enhed.'),
               backgroundColor: AppColors.error,
             ),
           );
@@ -2613,7 +2757,7 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
                       border: Border.all(color: AppColors.borderLight),
                     ),
                     child: Text(
-                      'Svarer paa: ${_truncateText(replyTo.text, 120)}',
+                      'Svarer på: ${_truncateText(replyTo.text, 120)}',
                       style: AppTypography.xs.copyWith(color: AppColors.mutedForeground),
                     ),
                   ),
@@ -3321,8 +3465,9 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     final controller = TextEditingController(
       text: existing?.salgspris.toStringAsFixed(0) ?? defaultPrice.toStringAsFixed(0),
     );
+    final noteController = TextEditingController(text: existing?.note ?? '');
 
-    final result = await showDialog<double?>(
+    final result = await showDialog<Map<String, dynamic>?>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Tilpas ${PriceCategory.getDisplayName(category)}'),
@@ -3345,6 +3490,15 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
               keyboardType: TextInputType.number,
               autofocus: true,
             ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: 'Intern note til faktura',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
           ],
         ),
         actions: [
@@ -3355,7 +3509,10 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
           ElevatedButton(
             onPressed: () {
               final value = double.tryParse(controller.text);
-              Navigator.pop(context, value);
+              Navigator.pop(context, {
+                'price': value,
+                'note': noteController.text,
+              });
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -3368,17 +3525,21 @@ class _SagDetaljerScreenState extends State<SagDetaljerScreen> {
     );
 
     controller.dispose();
+    noteController.dispose();
 
-    if (result != null) {
+    if (result != null && result['price'] != null) {
+      final note = (result['note'] as String?)?.trim();
       final now = DateTime.now().toIso8601String();
       final sagPris = existing?.copyWith(
-        salgspris: result,
+        salgspris: result['price'] as double,
+        note: note != null && note.isNotEmpty ? note : null,
         updatedAt: now,
       ) ?? SagPris(
         id: _uuid.v4(),
         sagId: widget.sagId,
         category: category,
-        salgspris: result,
+        salgspris: result['price'] as double,
+        note: note != null && note.isNotEmpty ? note : null,
         createdAt: now,
         updatedAt: now,
       );

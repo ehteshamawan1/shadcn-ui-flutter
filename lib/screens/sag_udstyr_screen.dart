@@ -6,6 +6,7 @@ import '../services/database_service.dart';
 import '../services/auth_service.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/filter_widget.dart';
+import '../constants/roles_and_features.dart';
 
 /// Equipment item stored locally for a sag
 class SagEquipment {
@@ -198,11 +199,11 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
       ],
     ),
     EquipmentCategory(
-      name: 'Varmeblaeser',
+      name: 'Varmeblæser',
       icon: Icons.heat_pump,
       types: [
         EquipmentType(
-          name: 'Varmeblaeser',
+          name: 'Varmeblæser',
           description: 'Variabel effekt',
           hasVariableEffect: true,
           hasDetailedForm: true,
@@ -259,10 +260,10 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
       ],
     ),
     EquipmentCategory(
-      name: 'Draenhulsblaeser',
+      name: 'Drænhulsblæser',
       icon: Icons.wb_sunny,
       types: [
-        EquipmentType(name: 'Draenhulsblaeser', description: 'Klik for detaljer', hasDetailedForm: true),
+        EquipmentType(name: 'Drænhulsblæser', description: 'Klik for detaljer', hasDetailedForm: true),
       ],
     ),
     EquipmentCategory(
@@ -390,7 +391,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
 
   IconData _getCategoryIcon(String category) {
     final cat = _equipmentCategories.firstWhere(
-      (c) => c.name == category,
+      (c) => _normalizeDanish(c.name) == _normalizeDanish(category),
       orElse: () => _equipmentCategories.last,
     );
     return cat.icon;
@@ -402,10 +403,28 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
     return categories;
   }
 
+  String _normalizeDanish(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ae', 'æ')
+        .replaceAll('oe', 'ø')
+        .replaceAll('aa', 'å');
+  }
+
+  String _formatDanishLabel(String value) {
+    return value
+        .replaceAll('Ae', 'Æ')
+        .replaceAll('ae', 'æ')
+        .replaceAll('Oe', 'Ø')
+        .replaceAll('oe', 'ø')
+        .replaceAll('Aa', 'Å')
+        .replaceAll('aa', 'å');
+  }
+
   bool _needsDetailedForm(String? category) {
     if (category == null) return false;
     final cat = _equipmentCategories.firstWhere(
-      (c) => c.name == category,
+      (c) => _normalizeDanish(c.name) == _normalizeDanish(category),
       orElse: () => _equipmentCategories.last,
     );
     return cat.types.any((t) => t.hasDetailedForm);
@@ -413,7 +432,8 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
 
   bool _hasVariableEffect(String? type) {
     if (type == null) return false;
-    return type == 'Varmeblaeser' || type == 'Kaloriferer';
+    final normalized = _normalizeDanish(type);
+    return normalized == 'varmeblæser' || normalized == 'kaloriferer';
   }
 
   /// Validate machine number format for Affugter (x-xxxx, x-xxxxx, x-xxx)
@@ -440,7 +460,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
   Future<void> _addEquipment() async {
     if (_selectedCategory == null || _selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vaelg venligst kategori og type')),
+        const SnackBar(content: Text('Vælg venligst kategori og type')),
       );
       return;
     }
@@ -546,7 +566,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
       },
       timestamp: DateTime.now().toIso8601String(),
       user: userName,
-      note: 'Status aendret: ${equipment.category} - ${equipment.type} (${equipment.status} -> $newStatus)',
+      note: 'Status ændret: ${_formatDanishLabel(equipment.category)} - ${_formatDanishLabel(equipment.type)} (${equipment.status} -> $newStatus)',
     );
 
     await _dbService.addEquipmentLog(equipmentLog);
@@ -586,7 +606,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Tilfoej nyt udstyr',
+                                'Tilføj nyt udstyr',
                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               SizedBox(height: 4),
@@ -647,11 +667,11 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              '${index + 1}. ${category.name}',
+                                              '${index + 1}. ${_formatDanishLabel(category.name)}',
                                               style: const TextStyle(fontWeight: FontWeight.w500),
                                             ),
                                             Text(
-                                              '${category.types.length} typer tilgaengelige',
+                                              '${category.types.length} typer tilgængelige',
                                               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                             ),
                                           ],
@@ -710,7 +730,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
 
                             // Type selection if category has multiple types
                             if (_selectedType == null) ...[
-                              const Text('Vaelg type', style: TextStyle(fontWeight: FontWeight.w500)),
+                              const Text('Vælg type', style: TextStyle(fontWeight: FontWeight.w500)),
                               const SizedBox(height: 8),
                               ..._equipmentCategories
                                   .firstWhere((c) => c.name == _selectedCategory)
@@ -731,7 +751,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(type.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                              Text(_formatDanishLabel(type.name), style: const TextStyle(fontWeight: FontWeight.w500)),
                                               if (type.description != null)
                                                 Text(
                                                   type.description!,
@@ -933,7 +953,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: _addEquipment,
-                            child: const Text('Tilfoej udstyr'),
+                            child: const Text('Tilføj udstyr'),
                           ),
                         ],
                       ),
@@ -995,7 +1015,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                                   Row(
                                     children: [
                                       Chip(
-                                        label: Text(log.category, style: const TextStyle(fontSize: 12)),
+                                        label: Text(_formatDanishLabel(log.category), style: const TextStyle(fontSize: 12)),
                                         padding: EdgeInsets.zero,
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
@@ -1074,16 +1094,27 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                   ],
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: _showEquipmentLogsDialog,
-                icon: const Icon(Icons.history),
-                label: Text('Log (${_equipmentLogs.length})'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _showAddEquipmentDialog,
-                icon: const Icon(Icons.add),
-                label: const Text('Tilfoej udstyr'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _showEquipmentLogsDialog,
+                    icon: const Icon(Icons.history),
+                    label: Text('Log (${_equipmentLogs.length})'),
+                  ),
+                  if (AuthService().hasFeature(AppFeatures.nfcScanning))
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/nfc-scanner/${widget.sagId}'),
+                      icon: const Icon(Icons.nfc),
+                      label: const Text('NFC'),
+                    ),
+                  ElevatedButton.icon(
+                    onPressed: _showAddEquipmentDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tilføj udstyr'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1115,7 +1146,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                 label: 'Kategori',
                 type: FilterType.dropdown,
                 options: _getUniqueCategories()
-                    .map((cat) => FilterOption(value: cat, label: cat))
+                    .map((cat) => FilterOption(value: cat, label: _formatDanishLabel(cat)))
                     .toList(),
                 allOptionLabel: 'Alle kategorier',
               ),
@@ -1173,7 +1204,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
           itemLabel: 'udstyr',
           activeFilters: {
             if (_statusFilter != 'all') 'status': _statusFilter,
-            if (_categoryFilter != 'all') 'category': _categoryFilter,
+            if (_categoryFilter != 'all') 'category': _formatDanishLabel(_categoryFilter),
             if (_blokFilter != 'all') 'blok': _blokke.firstWhere((b) => b.id == _blokFilter, orElse: () => _blokke.first).navn,
           },
           onReset: (_statusFilter != 'all' || _categoryFilter != 'all' || _blokFilter != 'all' || _searchTerm.isNotEmpty)
@@ -1210,7 +1241,7 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                       ElevatedButton.icon(
                         onPressed: _showAddEquipmentDialog,
                         icon: const Icon(Icons.add),
-                        label: const Text('Tilfoej foerste udstyr'),
+                        label: const Text('Tilføj første udstyr'),
                       ),
                     ],
                   ),
@@ -1242,11 +1273,11 @@ class _SagUdstyrsScreenState extends State<SagUdstyrsScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        eq.category,
+                                        _formatDanishLabel(eq.category),
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                       Text(
-                                        eq.type,
+                                        _formatDanishLabel(eq.type),
                                         style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                                       ),
                                     ],
