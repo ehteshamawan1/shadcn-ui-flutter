@@ -117,7 +117,13 @@ class AuthService {
     }
 
     // Check if feature is explicitly enabled for this user
-    final enabledFeatures = _currentUser!.enabledFeatures ?? [];
+    // Fall back to role-based defaults if enabledFeatures is null or empty
+    final enabledFeatures = _currentUser!.enabledFeatures;
+    if (enabledFeatures == null || enabledFeatures.isEmpty) {
+      // Use default features based on role for backwards compatibility
+      final defaultFeatures = AppFeatures.getDefaultFeaturesForRole(_currentUser!.role);
+      return defaultFeatures.contains(featureKey);
+    }
     return enabledFeatures.contains(featureKey);
   }
 
@@ -135,6 +141,11 @@ class AuthService {
       return AppFeatures.all;
     }
 
-    return _currentUser!.enabledFeatures ?? [];
+    // Fall back to role-based defaults if enabledFeatures is null or empty
+    final enabledFeatures = _currentUser!.enabledFeatures;
+    if (enabledFeatures == null || enabledFeatures.isEmpty) {
+      return AppFeatures.getDefaultFeaturesForRole(_currentUser!.role);
+    }
+    return enabledFeatures;
   }
 }

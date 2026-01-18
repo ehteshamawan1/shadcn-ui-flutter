@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../models/user.dart';
+import '../constants/roles_and_features.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -105,6 +106,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 name: nameController.text,
                 pin: pinController.text,
                 role: selectedRole,
+                enabledFeatures: AppFeatures.getDefaultFeaturesForRole(selectedRole),
                 createdAt: DateTime.now().toIso8601String(),
               );
 
@@ -197,6 +199,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 name: nameController.text,
                 pin: pinController.text,
                 role: selectedRole,
+                enabledFeatures: AppFeatures.getDefaultFeaturesForRole(selectedRole),
                 createdAt: user.createdAt,
               );
 

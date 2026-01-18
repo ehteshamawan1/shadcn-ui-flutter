@@ -14,6 +14,7 @@ import '../models/sag_message.dart';
 import '../models/activity_log.dart';
 import '../models/app_setting.dart';
 import '../models/kostpris.dart';
+import '../constants/roles_and_features.dart';
 import 'sync_service.dart';
 import 'settings_service.dart';
 import 'notification_manager.dart';
@@ -916,6 +917,7 @@ class DatabaseService {
         name: 'Rasmus',
         pin: '1234',
         role: 'tekniker',
+        enabledFeatures: AppFeatures.getDefaultFeaturesForRole('tekniker'),
         createdAt: DateTime.now().toIso8601String(),
       ),
       User(
@@ -923,6 +925,7 @@ class DatabaseService {
         name: 'Stefan',
         pin: '1235',
         role: 'tekniker',
+        enabledFeatures: AppFeatures.getDefaultFeaturesForRole('tekniker'),
         createdAt: DateTime.now().toIso8601String(),
       ),
       User(
@@ -930,6 +933,7 @@ class DatabaseService {
         name: 'Christian',
         pin: '1236',
         role: 'tekniker',
+        enabledFeatures: AppFeatures.getDefaultFeaturesForRole('tekniker'),
         createdAt: DateTime.now().toIso8601String(),
       ),
       User(
@@ -937,6 +941,7 @@ class DatabaseService {
         name: 'Tanja',
         pin: '0000',
         role: 'admin',
+        enabledFeatures: AppFeatures.getDefaultFeaturesForRole('admin'),
         createdAt: DateTime.now().toIso8601String(),
       ),
     ];
